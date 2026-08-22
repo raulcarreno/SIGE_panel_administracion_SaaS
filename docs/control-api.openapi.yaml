@@ -1,0 +1,65 @@
+openapi: 3.0.3
+info:
+  title: SIGE Control API
+  version: 1.0.0
+  description: External superadmin API for tenant pod management (reference copy from SIGE_monolito).
+servers:
+  - url: https://{tenantHost}
+    variables:
+      tenantHost:
+        default: tenant.example.com
+security:
+  - ControlBearer: []
+components:
+  securitySchemes:
+    ControlBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: token
+paths:
+  /api/control/status:
+    get:
+      summary: Pod status
+      responses:
+        '200':
+          description: Status payload
+  /api/control/migrations:
+    get:
+      summary: List migrations
+      responses:
+        '200':
+          description: Applied and pending migrations
+  /api/control/migrations/run:
+    post:
+      summary: Run pending migrations
+      responses:
+        '200':
+          description: Migration result
+  /api/control/config:
+    get:
+      summary: Tenant config and module catalog
+      responses:
+        '200':
+          description: Config
+    put:
+      summary: Update tenant config
+      responses:
+        '200':
+          description: Updated config
+  /api/control/settings:
+    get:
+      summary: Tenant settings (secrets masked)
+      responses:
+        '200':
+          description: Settings
+    put:
+      summary: Update tenant settings
+      responses:
+        '200':
+          description: Updated settings
+  /api/control/maintenance:
+    post:
+      summary: Toggle maintenance mode
+      responses:
+        '200':
+          description: Maintenance state

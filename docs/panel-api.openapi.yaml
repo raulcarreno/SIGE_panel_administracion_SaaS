@@ -1,0 +1,127 @@
+openapi: 3.0.3
+info:
+  title: SIGE Superadmin Panel API
+  version: 1.0.0
+  description: Internal API for the central superadmin panel.
+servers:
+  - url: http://localhost:3001
+security:
+  - PanelBearer: []
+components:
+  securitySchemes:
+    PanelBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+paths:
+  /api/superadmin/public-config:
+    get:
+      summary: Public bootstrap config for login UI
+      security: []
+      responses:
+        '200':
+          description: Google client ID
+  /api/superadmin/login:
+    post:
+      summary: Google OAuth login
+      security: []
+      responses:
+        '200':
+          description: JWT token
+  /api/superadmin/dashboard:
+    get:
+      summary: Dashboard stats
+      responses:
+        '200':
+          description: Stats
+  /api/superadmin/tenants:
+    get:
+      summary: List tenants
+      responses:
+        '200':
+          description: Tenant list
+    post:
+      summary: Register tenant
+      responses:
+        '201':
+          description: Created tenant
+  /api/superadmin/tenants/sync-all:
+    post:
+      summary: Sync all tenants
+      responses:
+        '200':
+          description: Sync results
+  /api/superadmin/tenants/{id}:
+    get:
+      summary: Tenant detail
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Tenant
+    patch:
+      summary: Update tenant registry metadata
+      responses:
+        '200':
+          description: Updated tenant
+    delete:
+      summary: Archive tenant
+      responses:
+        '200':
+          description: Archived tenant
+  /api/superadmin/tenants/{id}/sync:
+    post:
+      summary: Sync tenant status from pod
+      responses:
+        '200':
+          description: Sync result
+  /api/superadmin/tenants/{id}/config:
+    get:
+      summary: Proxy GET /api/control/config
+      responses:
+        '200':
+          description: Config
+    put:
+      summary: Proxy PUT /api/control/config
+      responses:
+        '200':
+          description: Updated config
+  /api/superadmin/tenants/{id}/settings:
+    get:
+      summary: Proxy GET /api/control/settings
+      responses:
+        '200':
+          description: Settings
+    put:
+      summary: Proxy PUT /api/control/settings
+      responses:
+        '200':
+          description: Updated settings
+  /api/superadmin/tenants/{id}/migrations:
+    get:
+      summary: Proxy GET /api/control/migrations
+      responses:
+        '200':
+          description: Migrations
+  /api/superadmin/tenants/{id}/migrations/run:
+    post:
+      summary: Proxy POST /api/control/migrations/run
+      responses:
+        '200':
+          description: Migration result
+  /api/superadmin/tenants/{id}/maintenance:
+    post:
+      summary: Proxy POST /api/control/maintenance
+      responses:
+        '200':
+          description: Maintenance state
+  /api/superadmin/tenants/{id}/audit:
+    get:
+      summary: Panel audit log for tenant
+      responses:
+        '200':
+          description: Audit entries
