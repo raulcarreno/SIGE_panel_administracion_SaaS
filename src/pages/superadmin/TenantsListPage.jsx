@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiRequest } from '../../lib/api'
+import PageHeader from '../../components/ui/PageHeader'
+import DataTable from '../../components/ui/DataTable'
+import EmptyState from '../../components/ui/EmptyState'
+import Alert from '../../components/ui/Alert'
+import Button from '../../components/ui/Button'
 import TenantStatusBadge from '../../components/TenantStatusBadge'
 
 export default function TenantsListPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [tenants, setTenants] = useState([])
   const [error, setError] = useState('')
 
@@ -15,61 +21,70 @@ export default function TenantsListPage() {
       .catch((err) => setError(err.message))
   }, [])
 
+  const columns = [
+    { key: 'slug', label: t('table.slug') },
+    {
+      key: 'baseUrl',
+      label: t('table.url'),
+      render: (row) => (
+        <a href={row.baseUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+          {row.baseUrl}
+        </a>
+      ),
+    },
+    {
+      key: 'status',
+      label: t('table.status'),
+      render: (row) => <TenantStatusBadge snapshot={row.snapshot?.payload} />,
+    },
+    {
+      key: 'maintenance',
+      label: t('table.maintenance'),
+      render: (row) =>
+        row.snapshot?.payload?.maintenanceMode ? (
+          <span className="badge badge-maintenance">{t('table.on')}</span>
+        ) : (
+          t('table.off')
+        ),
+    },
+    {
+      key: 'syncedAt',
+      label: t('table.lastSync'),
+      render: (row) =>
+        row.snapshot?.syncedAt
+          ? new Date(row.snapshot.syncedAt).toLocaleString('es-ES')
+          : '-',
+    },
+  ]
+
   return (
     <div>
-      <div className="page-header">
-        <h1>{t('tenants')}</h1>
-        <Link className="btn" to="/superadmin/tenants/new">{t('newTenant')}</Link>
-      </div>
+      <PageHeader
+        title={t('nav.tenants')}
+        actions={
+          <Link to="/superadmin/tenants/new">
+            <Button>{t('nav.newTenant')}</Button>
+          </Link>
+        }
+      />
 
-      {error ? <div className="alert alert-error">{error}</div> : null}
+      {error ? <Alert variant="error">{error}</Alert> : null}
 
-      <div className="card">
+      <div className="card card--flat">
         {tenants.length === 0 ? (
-          <p>{t('noTenants')}</p>
+          <EmptyState
+            title={t('noTenants')}
+            description={t('noTenantsDescription')}
+            actionLabel={t('nav.newTenant')}
+            actionTo="/superadmin/tenants/new"
+            LinkComponent={Link}
+          />
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Slug</th>
-                <th>URL</th>
-                <th>Estado</th>
-                <th>Mantenimiento</th>
-                <th>Última sync</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {tenants.map((tenant) => (
-                <tr key={tenant.id}>
-                  <td>{tenant.slug}</td>
-                  <td>
-                    <a href={tenant.baseUrl} target="_blank" rel="noreferrer">
-                      {tenant.baseUrl}
-                    </a>
-                  </td>
-                  <td>
-                    <TenantStatusBadge snapshot={tenant.snapshot?.payload} />
-                  </td>
-                  <td>
-                    {tenant.snapshot?.payload?.maintenanceMode ? (
-                      <span className="badge badge-maintenance">ON</span>
-                    ) : (
-                      'OFF'
-                    )}
-                  </td>
-                  <td>
-                    {tenant.snapshot?.syncedAt
-                      ? new Date(tenant.snapshot.syncedAt).toLocaleString('es-ES')
-                      : '-'}
-                  </td>
-                  <td>
-                    <Link to={`/superadmin/tenants/${tenant.id}`}>Ver</Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable
+            columns={columns}
+            rows={tenants}
+            onRowClick={(row) => navigate(`/superadmin/tenants/${row.id}`)}
+          />
         )}
       </div>
     </div>

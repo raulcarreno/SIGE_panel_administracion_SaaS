@@ -1,4 +1,5 @@
 import loginHandler from './routes/auth/login.js'
+import devLoginHandler from './routes/auth/devLogin.js'
 import healthHandler from './routes/health.js'
 import {
   auditHandler,
@@ -18,18 +19,28 @@ import {
   syncAllHandler,
   syncHandler,
 } from './routes/tenants/handlers.js'
-import { getGoogleClientId, requireSuperadmin } from '../api/_lib/panelAuth.js'
+import {
+  getGoogleClientId,
+  isDevLoginEnabled,
+  isGoogleLoginConfigured,
+  requireSuperadmin,
+} from '../api/_lib/panelAuth.js'
 import { handleApiError } from '../api/_lib/apiHelpers.js'
 
 async function publicConfigHandler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' })
-  return res.status(200).json({ googleClientId: getGoogleClientId() })
+  return res.status(200).json({
+    googleClientId: getGoogleClientId(),
+    googleLoginEnabled: isGoogleLoginConfigured(),
+    devLoginEnabled: isDevLoginEnabled(),
+  })
 }
 
 const STATIC_ROUTES = new Map([
   ['GET /api/health', healthHandler],
   ['GET /api/superadmin/public-config', publicConfigHandler],
   ['POST /api/superadmin/login', loginHandler],
+  ['POST /api/superadmin/login/dev', devLoginHandler],
   ['GET /api/superadmin/dashboard', dashboardHandler],
   ['GET /api/superadmin/tenants', listHandler],
   ['POST /api/superadmin/tenants', createHandler],
@@ -58,7 +69,12 @@ export async function dispatchApiRequest(req, res, pathSegments) {
   const routeKey = `${method} ${pathname}`
 
   try {
-    if (pathname.startsWith('/api/superadmin/') && pathname !== '/api/superadmin/login' && pathname !== '/api/superadmin/public-config') {
+    const publicPaths = new Set([
+      '/api/superadmin/login',
+      '/api/superadmin/login/dev',
+      '/api/superadmin/public-config',
+    ])
+    if (pathname.startsWith('/api/superadmin/') && !publicPaths.has(pathname)) {
       req.superadmin = await requireSuperadmin(req)
     }
   } catch (error) {

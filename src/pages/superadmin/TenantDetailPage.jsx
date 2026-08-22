@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiRequest } from '../../lib/api'
 import TenantStatusBadge from '../../components/TenantStatusBadge'
+import TenantSectionNav from '../../components/tenant/TenantSectionNav'
+import PageHeader from '../../components/ui/PageHeader'
+import Alert from '../../components/ui/Alert'
+import Button from '../../components/ui/Button'
 
-const TABS = ['overview', 'modules', 'validity', 'maintenance', 'migrations', 'settings', 'audit']
 const LOCKED_MODULES = new Set(['admin_panel', 'public_site_shell', 'health'])
 
 function toDatetimeLocal(value) {
@@ -68,7 +71,7 @@ export default function TenantDetailPage() {
     try {
       await apiRequest(`/api/superadmin/tenants/${id}/sync`, { method: 'POST' })
       await loadTenant()
-      setMessage('Sincronización completada.')
+      setMessage(t('syncComplete'))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -85,7 +88,7 @@ export default function TenantDetailPage() {
         body,
       })
       setConfigData(result)
-      setMessage('Configuración guardada.')
+      setMessage(t('configSaved'))
       await loadTenant()
     } catch (err) {
       setError(err.message)
@@ -103,7 +106,7 @@ export default function TenantDetailPage() {
         body,
       })
       setSettingsData(result)
-      setMessage('Settings guardados.')
+      setMessage(t('settingsSaved'))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -120,7 +123,7 @@ export default function TenantDetailPage() {
         method: 'POST',
         body: { enabled },
       })
-      setMessage('Mantenimiento actualizado.')
+      setMessage(t('maintenanceUpdated'))
       await loadTenant()
     } catch (err) {
       setError(err.message)
@@ -138,7 +141,7 @@ export default function TenantDetailPage() {
         method: 'POST',
       })
       setMigrationsData(result)
-      setMessage('Migraciones ejecutadas.')
+      setMessage(t('migrationsRun'))
     } catch (err) {
       setError(err.message)
     } finally {
@@ -152,131 +155,152 @@ export default function TenantDetailPage() {
 
   return (
     <div>
-      <div className="page-header">
+      <PageHeader
+        title={tenant.displayName}
+        subtitle={`${tenant.slug} — ${tenant.baseUrl}`}
+        breadcrumbs={
+          <ol className="breadcrumbs">
+            <li><Link to="/superadmin/tenants">{t('nav.tenants')}</Link></li>
+            <li className="breadcrumbs__sep">/</li>
+            <li>{tenant.slug}</li>
+          </ol>
+        }
+        actions={
+          <>
+            <Button onClick={handleSync} disabled={loading}>{t('sync')}</Button>
+            <Button
+              variant="secondary"
+              as="a"
+              href={`${tenant.baseUrl}/admin`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t('adminTenant')}
+            </Button>
+          </>
+        }
+      />
+
+      {error ? <Alert variant="error">{error}</Alert> : null}
+      {message ? <Alert variant="success">{message}</Alert> : null}
+
+      <div className="tenant-layout">
+        <TenantSectionNav active={tab} onChange={setTab} />
+
         <div>
-          <h1>{tenant.displayName}</h1>
-          <p>{tenant.slug} — {tenant.baseUrl}</p>
-        </div>
-        <div className="actions">
-          <button type="button" className="btn" onClick={handleSync} disabled={loading}>
-            {t('sync')}
-          </button>
-          <a className="btn btn-secondary" href={`${tenant.baseUrl}/admin`} target="_blank" rel="noreferrer">
-            Admin tenant
-          </a>
-        </div>
-      </div>
-
-      {error ? <div className="alert alert-error">{error}</div> : null}
-      {message ? <div className="alert alert-success">{message}</div> : null}
-
-      <div className="tabs">
-        {TABS.map((item) => (
-          <button
-            key={item}
-            type="button"
-            className={`tab ${tab === item ? 'active' : ''}`}
-            onClick={() => setTab(item)}
-          >
-            {t(item)}
-          </button>
-        ))}
-      </div>
-
-      {tab === 'overview' ? (
-        <div className="card">
-          <p>BD: <strong>{tenant.databaseName || '-'}</strong></p>
-          <p>Estado local: <strong>{tenant.status}</strong></p>
-          <p>Estado remoto: <TenantStatusBadge snapshot={snapshot} /></p>
-          <p>DB pod: {snapshot?.db || '-'}</p>
-          <p>Versión: {snapshot?.appVersion || '-'}</p>
-          <p>Uptime: {snapshot?.uptimeSeconds != null ? `${snapshot.uptimeSeconds}s` : '-'}</p>
-          <p>Migraciones pendientes: {snapshot?.migrationsPending ?? '-'}</p>
-          {tenant.snapshot?.syncError ? (
-            <p className="alert alert-error">Sync error: {tenant.snapshot.syncError}</p>
+          {tab === 'overview' ? (
+            <div className="card">
+              <div className="overview-grid">
+                <div className="overview-item">
+                  <p className="overview-item__label">Database</p>
+                  <p className="overview-item__value">{tenant.databaseName || '-'}</p>
+                </div>
+                <div className="overview-item">
+                  <p className="overview-item__label">Estado local</p>
+                  <p className="overview-item__value">{tenant.status}</p>
+                </div>
+                <div className="overview-item">
+                  <p className="overview-item__label">Estado remoto</p>
+                  <p className="overview-item__value"><TenantStatusBadge snapshot={snapshot} /></p>
+                </div>
+                <div className="overview-item">
+                  <p className="overview-item__label">DB pod</p>
+                  <p className="overview-item__value">{snapshot?.db || '-'}</p>
+                </div>
+                <div className="overview-item">
+                  <p className="overview-item__label">Versión</p>
+                  <p className="overview-item__value">{snapshot?.appVersion || '-'}</p>
+                </div>
+                <div className="overview-item">
+                  <p className="overview-item__label">Uptime</p>
+                  <p className="overview-item__value">
+                    {snapshot?.uptimeSeconds != null ? `${snapshot.uptimeSeconds}s` : '-'}
+                  </p>
+                </div>
+                <div className="overview-item">
+                  <p className="overview-item__label">Migraciones pendientes</p>
+                  <p className="overview-item__value">{snapshot?.migrationsPending ?? '-'}</p>
+                </div>
+              </div>
+              {tenant.snapshot?.syncError ? (
+                <Alert variant="error">Sync error: {tenant.snapshot.syncError}</Alert>
+              ) : null}
+            </div>
           ) : null}
-        </div>
-      ) : null}
 
-      {tab === 'modules' && configData ? (
-        <ModulesTab
-          configData={configData}
-          loading={loading}
-          onSave={saveConfig}
-        />
-      ) : null}
+          {tab === 'modules' && configData ? (
+            <ModulesTab configData={configData} loading={loading} onSave={saveConfig} t={t} />
+          ) : null}
 
-      {tab === 'validity' && configData ? (
-        <ValidityTab
-          config={configData.config}
-          loading={loading}
-          onSave={saveConfig}
-        />
-      ) : null}
+          {tab === 'validity' && configData ? (
+            <ValidityTab config={configData.config} loading={loading} onSave={saveConfig} t={t} />
+          ) : null}
 
-      {tab === 'maintenance' ? (
-        <div className="card actions">
-          <p>Estado actual: {snapshot?.maintenanceMode ? 'ON' : 'OFF'}</p>
-          <button type="button" className="btn" disabled={loading} onClick={() => toggleMaintenance(true)}>
-            Activar mantenimiento
-          </button>
-          <button type="button" className="btn btn-secondary" disabled={loading} onClick={() => toggleMaintenance(false)}>
-            Desactivar mantenimiento
-          </button>
-        </div>
-      ) : null}
+          {tab === 'maintenance' ? (
+            <div className="card">
+              <p>{t('maintenanceCurrent')}: <strong>{snapshot?.maintenanceMode ? t('table.on') : t('table.off')}</strong></p>
+              <div className="page-header__actions" style={{ marginTop: '1rem' }}>
+                <Button disabled={loading} onClick={() => toggleMaintenance(true)}>
+                  {t('enableMaintenance')}
+                </Button>
+                <Button variant="secondary" disabled={loading} onClick={() => toggleMaintenance(false)}>
+                  {t('disableMaintenance')}
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
-      {tab === 'migrations' ? (
-        <div className="card">
-          <div className="actions" style={{ marginBottom: '1rem' }}>
-            <button type="button" className="btn" onClick={runMigrations} disabled={loading}>
-              {t('runMigrations')}
-            </button>
-          </div>
-          {migrationsData ? (
-            <>
-              <h3>Pendientes</h3>
-              <ul>
-                {(migrationsData.pending || []).map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <h3>Aplicadas</h3>
-              <ul>
-                {(migrationsData.applied || []).map((item) => (
-                  <li key={typeof item === 'string' ? item : item.name}>
-                    {typeof item === 'string' ? item : item.name}
+          {tab === 'migrations' ? (
+            <div className="card">
+              <div className="page-header__actions" style={{ marginBottom: '1rem' }}>
+                <Button onClick={runMigrations} disabled={loading}>{t('runMigrations')}</Button>
+              </div>
+              {migrationsData ? (
+                <>
+                  <h3 className="card__title">{t('pendingMigrations')}</h3>
+                  <ul>
+                    {(migrationsData.pending || []).map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                  <h3 className="card__title">{t('appliedMigrations')}</h3>
+                  <ul>
+                    {(migrationsData.applied || []).map((item) => (
+                      <li key={typeof item === 'string' ? item : item.name}>
+                        {typeof item === 'string' ? item : item.name}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p>{t('loading')}</p>
+              )}
+            </div>
+          ) : null}
+
+          {tab === 'settings' && settingsData ? (
+            <SettingsTab settings={settingsData.settings} loading={loading} onSave={saveSettings} t={t} />
+          ) : null}
+
+          {tab === 'audit' ? (
+            <div className="card">
+              <ul className="audit-list">
+                {auditEntries.map((entry) => (
+                  <li key={entry.id}>
+                    <strong>{entry.action}</strong> — {entry.actorEmail}
+                    <div>{new Date(entry.createdAt).toLocaleString('es-ES')}</div>
                   </li>
                 ))}
               </ul>
-            </>
-          ) : (
-            <p>{t('loading')}</p>
-          )}
+            </div>
+          ) : null}
         </div>
-      ) : null}
-
-      {tab === 'settings' && settingsData ? (
-        <SettingsTab settings={settingsData.settings} loading={loading} onSave={saveSettings} />
-      ) : null}
-
-      {tab === 'audit' ? (
-        <div className="card">
-          <ul className="audit-list">
-            {auditEntries.map((entry) => (
-              <li key={entry.id}>
-                <strong>{entry.action}</strong> — {entry.actorEmail}
-                <div>{new Date(entry.createdAt).toLocaleString('es-ES')}</div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      </div>
     </div>
   )
 }
 
-function ModulesTab({ configData, loading, onSave }) {
+function ModulesTab({ configData, loading, onSave, t }) {
   const [modules, setModules] = useState(configData.config.modules)
   const [preset, setPreset] = useState('')
 
@@ -292,7 +316,7 @@ function ModulesTab({ configData, loading, onSave }) {
   return (
     <div className="card">
       <label>
-        Preset
+        {t('form.preset')}
         <select value={preset} onChange={(e) => setPreset(e.target.value)}>
           <option value="">—</option>
           {(configData.presets || []).map((name) => (
@@ -313,21 +337,19 @@ function ModulesTab({ configData, loading, onSave }) {
           </label>
         ))}
       </div>
-      <div className="actions" style={{ marginTop: '1rem' }}>
-        <button
-          type="button"
-          className="btn"
+      <div className="page-header__actions" style={{ marginTop: '1rem' }}>
+        <Button
           disabled={loading}
           onClick={() => onSave(preset ? { preset } : { modules })}
         >
-          Guardar módulos
-        </button>
+          {t('saveModules')}
+        </Button>
       </div>
     </div>
   )
 }
 
-function ValidityTab({ config, loading, onSave }) {
+function ValidityTab({ config, loading, onSave, t }) {
   const [validFrom, setValidFrom] = useState(toDatetimeLocal(config.validFrom))
   const [validUntil, setValidUntil] = useState(toDatetimeLocal(config.validUntil))
   const [suspended, setSuspended] = useState(Boolean(config.suspendedAt))
@@ -335,21 +357,19 @@ function ValidityTab({ config, loading, onSave }) {
   return (
     <div className="card form-grid">
       <label>
-        Válido desde
+        {t('form.validFrom')}
         <input type="datetime-local" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} />
       </label>
       <label>
-        Válido hasta
+        {t('form.validUntil')}
         <input type="datetime-local" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} />
       </label>
       <label>
         <input type="checkbox" checked={suspended} onChange={(e) => setSuspended(e.target.checked)} />
-        {' '}Suspendido
+        {' '}{t('form.suspended')}
       </label>
-      <div className="actions">
-        <button
-          type="button"
-          className="btn"
+      <div className="page-header__actions">
+        <Button
           disabled={loading}
           onClick={() =>
             onSave({
@@ -359,14 +379,14 @@ function ValidityTab({ config, loading, onSave }) {
             })
           }
         >
-          Guardar validez
-        </button>
+          {t('saveValidity')}
+        </Button>
       </div>
     </div>
   )
 }
 
-function SettingsTab({ settings, loading, onSave }) {
+function SettingsTab({ settings, loading, onSave, t }) {
   const [siteUrl, setSiteUrl] = useState(settings.siteUrl || '')
   const [integrations, setIntegrations] = useState(settings.integrations || {})
 
@@ -382,7 +402,7 @@ function SettingsTab({ settings, loading, onSave }) {
   return (
     <div className="card form-grid">
       <label>
-        Site URL
+        {t('form.siteUrl')}
         <input value={siteUrl} onChange={(e) => setSiteUrl(e.target.value)} />
       </label>
       {Object.entries(integrations).map(([key, value]) => (
@@ -394,15 +414,10 @@ function SettingsTab({ settings, loading, onSave }) {
           />
         </label>
       ))}
-      <div className="actions">
-        <button
-          type="button"
-          className="btn"
-          disabled={loading}
-          onClick={() => onSave({ siteUrl, integrations })}
-        >
-          Guardar settings
-        </button>
+      <div className="page-header__actions">
+        <Button disabled={loading} onClick={() => onSave({ siteUrl, integrations })}>
+          {t('saveSettings')}
+        </Button>
       </div>
     </div>
   )

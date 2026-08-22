@@ -41,6 +41,16 @@ export function isGoogleLoginConfigured() {
   return Boolean(getGoogleClientId()) && getAllowedSuperadminEmails().length > 0
 }
 
+export function isDevLoginEnabled() {
+  if (process.env.NODE_ENV === 'production') return false
+  const flag = process.env.SUPERADMIN_DEV_LOGIN?.trim().toLowerCase()
+  return flag === 'true' || flag === '1' || flag === 'on'
+}
+
+export function isAnyLoginConfigured() {
+  return isGoogleLoginConfigured() || isDevLoginEnabled()
+}
+
 export async function signPanelToken(email) {
   return new SignJWT({ role: 'superadmin', sub: email, email })
     .setProtectedHeader({ alg: ALGORITHM })
