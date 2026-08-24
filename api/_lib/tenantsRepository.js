@@ -1,5 +1,7 @@
 import { getDb } from './db.js'
 import { encryptSecret, decryptSecret } from './secretsCrypto.js'
+import { mapDomainFields, ensureDerivedHostsForSlug } from './domainsRepository.js'
+import { getSaasBaseDomain } from './tenantDomains.js'
 
 function mapTenantRow(row) {
   if (!row) return null
@@ -23,6 +25,7 @@ function mapTenantRow(row) {
     lastDeployStatus: row.last_deploy_status || null,
     lastDeployError: row.last_deploy_error || null,
     lastDeployAt: row.last_deploy_at || null,
+    ...mapDomainFields(row),
   }
 }
 
@@ -126,14 +129,27 @@ export async function getTenantCredentials(id) {
 
 export async function createTenant(payload) {
   const slug = normalizeSlug(payload.slug)
-  const baseUrl = normalizeBaseUrl(payload.baseUrl)
-  const webBaseUrl = payload.webBaseUrl ? normalizeBaseUrl(payload.webBaseUrl) : ''
   const controlToken = payload.controlToken?.trim()
+  const saasBaseDomain = (payload.saasBaseDomain || getSaasBaseDomain()).trim().toLowerCase()
+  const derived = ensureDerivedHostsForSlug(slug, saasBaseDomain)
 
-  if (!slug || !baseUrl || !webBaseUrl || !controlToken) {
+  const baseUrl = payload.baseUrl?.trim()
+    ? normalizeBaseUrl(payload.baseUrl)
+    : derived.baseUrl
+  const webBaseUrl = payload.webBaseUrl?.trim()
+    ? normalizeBaseUrl(payload.webBaseUrl)
+    : derived.webBaseUrl
+
+  if (!slug || !controlToken) {
     const error = new Error(
-      'slug, baseUrl (ERP), webBaseUrl (Web CMS) and controlToken are required. A tenant is the ERP + Web CMS block.',
+      'slug and controlToken are required. baseUrl/webBaseUrl are derived from erp.<slug> / www.<slug> when omitted.',
     )
+    error.statusCode = 400
+    throw error
+  }
+
+  if (!baseUrl || !webBaseUrl) {
+    const error = new Error('Unable to derive baseUrl/webBaseUrl for tenant.')
     error.statusCode = 400
     throw error
   }
@@ -142,8 +158,9 @@ export async function createTenant(payload) {
   const result = await db.execute(
     `INSERT INTO tenants (
       slug, display_name, base_url, web_base_url, control_token_encrypted,
-      database_name, status, notes, erp_branch, web_branch
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      database_name, status, notes, erp_branch, web_branch,
+      saas_base_domain, erp_host, web_host, domain_status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING *`,
     [
       slug,
@@ -156,6 +173,10 @@ export async function createTenant(payload) {
       payload.notes?.trim() || null,
       payload.erpBranch?.trim() || slug,
       payload.webBranch?.trim() || slug,
+      derived.saasBaseDomain,
+      derived.erpHost,
+      derived.webHost,
+      'draft',
     ],
   )
 

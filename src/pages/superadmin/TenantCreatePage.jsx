@@ -1,10 +1,16 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiRequest } from '../../lib/api'
 import PageHeader from '../../components/ui/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
+
+const SAAS_BASE = 'findspo.com'
+
+function normalizeSlug(slug) {
+  return slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-')
+}
 
 export default function TenantCreatePage() {
   const { t } = useTranslation()
@@ -14,12 +20,21 @@ export default function TenantCreatePage() {
   const [form, setForm] = useState({
     slug: '',
     displayName: '',
-    baseUrl: '',
-    webBaseUrl: '',
     controlToken: '',
     databaseName: '',
     notes: '',
+    customWebHostname: '',
+    provisionDomains: true,
   })
+
+  const preview = useMemo(() => {
+    const slug = normalizeSlug(form.slug)
+    if (!slug) return null
+    return {
+      erpHost: `erp.${slug}.${SAAS_BASE}`,
+      webHost: `www.${slug}.${SAAS_BASE}`,
+    }
+  }, [form.slug])
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -33,11 +48,39 @@ export default function TenantCreatePage() {
       const result = await apiRequest('/api/superadmin/tenants', {
         method: 'POST',
         body: {
-          ...form,
-          databaseName: form.databaseName || `sige_${form.slug}`,
+          slug: form.slug,
+          displayName: form.displayName,
+          controlToken: form.controlToken,
+          databaseName: form.databaseName || `sige_${normalizeSlug(form.slug)}`,
+          notes: form.notes,
+          provisionDomains: form.provisionDomains,
         },
       })
-      navigate(`/superadmin/tenants/${result.tenant.id}`)
+
+      const tenantId = result.tenant.id
+
+      if (form.customWebHostname.trim()) {
+        try {
+          await apiRequest(`/api/superadmin/tenants/${tenantId}/domains/custom`, {
+            method: 'POST',
+            body: { kind: 'web', hostname: form.customWebHostname.trim() },
+          })
+        } catch (customError) {
+          navigate(`/superadmin/tenants/${tenantId}`, {
+            state: { domainWarning: customError.message },
+          })
+          return
+        }
+      }
+
+      if (result.domainsProvision?.failed) {
+        navigate(`/superadmin/tenants/${tenantId}`, {
+          state: { domainWarning: result.domainsProvision.error },
+        })
+        return
+      }
+
+      navigate(`/superadmin/tenants/${tenantId}`)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -60,7 +103,7 @@ export default function TenantCreatePage() {
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
-      <Alert variant="info">{t('composition.createIntro')}</Alert>
+      <Alert variant="info">{t('domains.createIntro')}</Alert>
 
       <form className="card form-grid" onSubmit={handleSubmit}>
         <div className="form-section">
@@ -80,58 +123,59 @@ export default function TenantCreatePage() {
               onChange={(e) => updateField('displayName', e.target.value)}
             />
           </label>
+          <label>
+            {t('form.controlToken')}
+            <input
+              required
+              type="password"
+              value={form.controlToken}
+              onChange={(e) => updateField('controlToken', e.target.value)}
+            />
+            <span className="form-hint">{t('form.controlTokenHint')}</span>
+          </label>
         </div>
 
         <div className="form-section">
-          <h2 className="form-section__title">{t('composition.blockTitle')}</h2>
-          <p className="form-hint" style={{ marginBottom: '1rem' }}>
-            {t('composition.blockHint')}
-          </p>
+          <h2 className="form-section__title">{t('domains.saasTitle')}</h2>
+          <p className="form-hint">{t('domains.createPreviewHint')}</p>
+          {preview ? (
+            <ul className="audit-list">
+              <li>
+                <strong>ERP</strong> — <code>{preview.erpHost}</code>
+              </li>
+              <li>
+                <strong>Web</strong> — <code>{preview.webHost}</code>
+              </li>
+            </ul>
+          ) : (
+            <p className="form-hint">{t('domains.slugPreviewPending')}</p>
+          )}
 
-          <div className="tenant-composition__grid tenant-composition__grid--form">
-            <div className="tenant-pod tenant-pod--form">
-              <p className="tenant-pod__role">{t('composition.erpRole')}</p>
-              <h3 className="tenant-pod__name">{t('composition.erpName')}</h3>
-              <p className="tenant-pod__desc">{t('composition.erpDesc')}</p>
-              <label>
-                {t('form.baseUrl')}
-                <input
-                  required
-                  type="url"
-                  value={form.baseUrl}
-                  onChange={(e) => updateField('baseUrl', e.target.value)}
-                  placeholder="https://erp.cliente.example.com"
-                />
-              </label>
-              <label>
-                {t('form.controlToken')}
-                <input
-                  required
-                  type="password"
-                  value={form.controlToken}
-                  onChange={(e) => updateField('controlToken', e.target.value)}
-                />
-                <span className="form-hint">{t('form.controlTokenHint')}</span>
-              </label>
-            </div>
+          <label className="checkbox-row">
+            <input
+              type="checkbox"
+              checked={form.provisionDomains}
+              onChange={(e) => updateField('provisionDomains', e.target.checked)}
+            />
+            {t('domains.provisionOnCreate')}
+          </label>
+        </div>
 
-            <div className="tenant-pod tenant-pod--form">
-              <p className="tenant-pod__role">{t('composition.webRole')}</p>
-              <h3 className="tenant-pod__name">{t('composition.webName')}</h3>
-              <p className="tenant-pod__desc">{t('composition.webDesc')}</p>
-              <label>
-                {t('form.webBaseUrl')}
-                <input
-                  required
-                  type="url"
-                  value={form.webBaseUrl}
-                  onChange={(e) => updateField('webBaseUrl', e.target.value)}
-                  placeholder="https://www.cliente.example.com"
-                />
-                <span className="form-hint">{t('form.webBaseUrlHint')}</span>
-              </label>
-            </div>
-          </div>
+        <div className="form-section">
+          <h2 className="form-section__title">{t('domains.customOptional')}</h2>
+          <label>
+            {t('domains.customHostname')}
+            <input
+              value={form.customWebHostname}
+              onChange={(e) => updateField('customWebHostname', e.target.value)}
+              placeholder="www.cliente.com"
+            />
+            <span className="form-hint">
+              {preview
+                ? t('domains.customCreateHint', { target: preview.webHost })
+                : t('domains.customHint')}
+            </span>
+          </label>
         </div>
 
         <div className="form-section">
@@ -156,7 +200,7 @@ export default function TenantCreatePage() {
 
         <div className="page-header__actions">
           <Button type="submit" disabled={loading}>
-            {loading ? t('loading') : t('save')}
+            {loading ? t('loading') : t('domains.createSubmit')}
           </Button>
         </div>
       </form>

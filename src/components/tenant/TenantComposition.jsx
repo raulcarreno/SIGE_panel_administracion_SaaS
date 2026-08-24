@@ -7,8 +7,10 @@ import Button from '../ui/Button'
  */
 export default function TenantComposition({ tenant, compact = false }) {
   const { t } = useTranslation()
-  const erpUrl = tenant?.baseUrl || ''
-  const webUrl = tenant?.webBaseUrl || ''
+  const erpUrl =
+    tenant?.baseUrl || (tenant?.erpHost ? `https://${tenant.erpHost}` : '')
+  const webUrl =
+    tenant?.webBaseUrl || (tenant?.webHost ? `https://${tenant.webHost}` : '')
 
   if (compact) {
     return (

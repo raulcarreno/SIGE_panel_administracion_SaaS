@@ -53,15 +53,30 @@ Esto crea/actualiza `sige-erp`, `sige-web`, `sige-panel`, Postgres multi-DB e In
 
 ## 4. DNS / TLS / OAuth
 
+### Plataforma (panel + demo legacy)
+
 A records (misma Ingress IP):
 
-- `sige-saas.findspo.com` → ERP
+- `sige-saas.findspo.com` → ERP (legado / demo)
 - `www.sige-saas.findspo.com` → Web
 - `panel.sige-saas.findspo.com` → Panel
 
 Espera certificado managed `sige-platform-cert` → Active.
 
 OAuth: añade origins/redirects para los tres hosts (ERP admin, Web admin, Panel).
+
+### Tenants nuevos (desde Superadmin)
+
+Esquema canónico: `erp.<slug>.findspo.com` + `www.<slug>.findspo.com`.
+
+La pestaña **Dominios** (o el checkbox al crear) aplica:
+
+1. Ingress `sige-tenant-<slug>` + ManagedCertificate `sige-cert-<slug>`
+2. Instrucciones de registros **A** para crear a mano en IONOS (misma IP Ingress)
+
+Dominios custom: CNAME del cliente → host SaaS, luego **Verificar DNS** en el panel.
+
+Ver `docs/tenant-lifecycle.md`.
 
 ## 5. Migraciones y bootstrap
 
@@ -72,19 +87,19 @@ source SIGE_monolito/deploy/gcp-gke/.secrets.env
 curl -sS -X POST "https://sige-saas.findspo.com/api/control/migrations/run" \
   -H "Authorization: Bearer $CONTROL_API_TOKEN"
 
-# Panel migrations corren al arrancar el pod (001–003)
+# Panel migrations corren al arrancar el pod (001–004)
 ```
 
 ## 6. Registrar tenant en el panel
 
 1. Abre `https://panel.sige-saas.findspo.com`
 2. Login superadmin
-3. Nuevo tenant:
-   - slug: `sige-saas`
-   - baseUrl: `https://sige-saas.findspo.com`
-   - webBaseUrl: `https://www.sige-saas.findspo.com`
-   - controlToken: valor de `.secrets.env`
-4. Sync + migraciones + módulos
+3. Nuevo tenant: slug + Control token; preview de `erp.<slug>.findspo.com` / `www.<slug>.findspo.com`
+4. Activa aplicación de Ingress/cert (DNS A en IONOS sigue siendo manual; copia la tabla en Dominios)
+5. En **Dominios**, confirma status `active`, crea los A en IONOS y añade custom domains si aplica
+6. Sync + migraciones + módulos
+
+Para el tenant demo legado `sige-saas`, puedes seguir registrando URLs absolutas legacy (`https://sige-saas.findspo.com`) pasando `baseUrl` / `webBaseUrl` en el POST, o provisionar el esquema `erp.` / `www.` canónico.
 
 ## 7. Probar versionado
 

@@ -9,6 +9,11 @@ import {
   dashboardHandler,
   deleteHandler,
   detailHandler,
+  domainsCustomAddHandler,
+  domainsCustomDeleteHandler,
+  domainsCustomVerifyHandler,
+  domainsGetHandler,
+  domainsProvisionHandler,
   listHandler,
   maintenanceHandler,
   migrationsGetHandler,
@@ -52,18 +57,43 @@ const STATIC_ROUTES = new Map([
 ])
 
 const TENANT_ROUTES = [
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)$/, methods: { GET: detailHandler, PATCH: patchHandler, DELETE: deleteHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/sync$/, methods: { POST: syncHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/config$/, methods: { GET: configGetHandler, PUT: configPutHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/settings$/, methods: { GET: settingsGetHandler, PUT: settingsPutHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/migrations$/, methods: { GET: migrationsGetHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/migrations\/run$/, methods: { POST: migrationsRunHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/maintenance$/, methods: { POST: maintenanceHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/audit$/, methods: { GET: auditHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning$/, methods: { GET: versioningGetHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning\/promote$/, methods: { POST: versioningPromoteHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning\/deploy$/, methods: { POST: versioningDeployHandler } },
-  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning\/jobs$/, methods: { GET: versioningJobsHandler } },
+  {
+    pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/domains\/custom\/([^/]+)\/verify$/,
+    methods: { POST: domainsCustomVerifyHandler },
+    paramNames: ['id', 'domainId'],
+  },
+  {
+    pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/domains\/custom\/([^/]+)$/,
+    methods: { DELETE: domainsCustomDeleteHandler },
+    paramNames: ['id', 'domainId'],
+  },
+  {
+    pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/domains\/custom$/,
+    methods: { POST: domainsCustomAddHandler },
+    paramNames: ['id'],
+  },
+  {
+    pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/domains\/provision$/,
+    methods: { POST: domainsProvisionHandler },
+    paramNames: ['id'],
+  },
+  {
+    pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/domains$/,
+    methods: { GET: domainsGetHandler },
+    paramNames: ['id'],
+  },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)$/, methods: { GET: detailHandler, PATCH: patchHandler, DELETE: deleteHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/sync$/, methods: { POST: syncHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/config$/, methods: { GET: configGetHandler, PUT: configPutHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/settings$/, methods: { GET: settingsGetHandler, PUT: settingsPutHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/migrations$/, methods: { GET: migrationsGetHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/migrations\/run$/, methods: { POST: migrationsRunHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/maintenance$/, methods: { POST: maintenanceHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/audit$/, methods: { GET: auditHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning$/, methods: { GET: versioningGetHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning\/promote$/, methods: { POST: versioningPromoteHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning\/deploy$/, methods: { POST: versioningDeployHandler }, paramNames: ['id'] },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning\/jobs$/, methods: { GET: versioningJobsHandler }, paramNames: ['id'] },
 ]
 
 function buildPathname(segments) {
@@ -99,7 +129,11 @@ export async function dispatchApiRequest(req, res, pathSegments) {
     if (!match) continue
     const handler = route.methods[method]
     if (!handler) continue
-    req.params = { id: decodeURIComponent(match[1]) }
+    const paramNames = route.paramNames || ['id']
+    req.params = {}
+    for (let index = 0; index < paramNames.length; index += 1) {
+      req.params[paramNames[index]] = decodeURIComponent(match[index + 1])
+    }
     return handler(req, res)
   }
 

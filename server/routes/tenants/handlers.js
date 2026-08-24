@@ -17,6 +17,13 @@ import {
   promoteFromMain,
 } from '../../../api/_lib/deployRunner.js'
 import { listDeployJobs } from '../../../api/_lib/versioningRepository.js'
+import {
+  getDomainsStatus,
+  provisionTenantDomains,
+  registerCustomDomain,
+  removeCustomDomain,
+  verifyAndProvisionCustomDomain,
+} from '../../../api/_lib/domainProvisioner.js'
 
 async function getActorEmail(req) {
   return req.superadmin?.email || req.superadmin?.sub || 'unknown'
@@ -55,20 +62,45 @@ export async function dashboardHandler(req, res) {
 export async function createHandler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' })
   try {
-    let tenant = await createTenant(req.body || {})
+    const actorEmail = await getActorEmail(req)
+    const body = req.body || {}
+    let tenant = await createTenant(body)
     await writeAuditLog({
       tenantId: tenant.id,
       action: 'tenant.created',
-      actorEmail: await getActorEmail(req),
-      payload: { slug: tenant.slug, baseUrl: tenant.baseUrl, webBaseUrl: tenant.webBaseUrl },
+      actorEmail,
+      payload: {
+        slug: tenant.slug,
+        baseUrl: tenant.baseUrl,
+        webBaseUrl: tenant.webBaseUrl,
+        erpHost: tenant.erpHost,
+        webHost: tenant.webHost,
+      },
     })
-    try {
-      const credentials = await resolveTenantCredentials(tenant.id)
-      tenant = await refreshTenantAfterControlMutation(tenant.id, credentials)
-    } catch {
-      // Registration succeeds even if the pod is not reachable yet
+
+    let domainsProvision = null
+    if (body.provisionDomains) {
+      try {
+        domainsProvision = await provisionTenantDomains(tenant.id, { actorEmail })
+        tenant = await getTenantWithSnapshot(tenant.id)
+      } catch (provisionError) {
+        tenant = await getTenantWithSnapshot(tenant.id)
+        domainsProvision = {
+          failed: true,
+          error: provisionError.message,
+          code: provisionError.code || null,
+        }
+      }
+    } else {
+      try {
+        const credentials = await resolveTenantCredentials(tenant.id)
+        tenant = await refreshTenantAfterControlMutation(tenant.id, credentials)
+      } catch {
+        // Registration succeeds even if the pod is not reachable yet
+      }
     }
-    return sendJson(res, 201, { tenant })
+
+    return sendJson(res, 201, { tenant, domainsProvision })
   } catch (error) {
     return handleApiError(res, error)
   }
@@ -322,6 +354,66 @@ export async function versioningJobsHandler(req, res) {
       limit: Number(req.query?.limit) || 20,
     })
     return sendJson(res, 200, { jobs })
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function domainsGetHandler(req, res) {
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const domains = await getDomainsStatus(req.params.id)
+    return sendJson(res, 200, domains)
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function domainsProvisionHandler(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const actorEmail = await getActorEmail(req)
+    const result = await provisionTenantDomains(req.params.id, { actorEmail })
+    return sendJson(res, 200, result)
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function domainsCustomAddHandler(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const actorEmail = await getActorEmail(req)
+    const result = await registerCustomDomain(req.params.id, {
+      kind: req.body?.kind,
+      hostname: req.body?.hostname,
+      actorEmail,
+    })
+    return sendJson(res, 201, result)
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function domainsCustomVerifyHandler(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const actorEmail = await getActorEmail(req)
+    const result = await verifyAndProvisionCustomDomain(req.params.id, req.params.domainId, {
+      actorEmail,
+    })
+    return sendJson(res, 200, result)
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function domainsCustomDeleteHandler(req, res) {
+  if (req.method !== 'DELETE') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const actorEmail = await getActorEmail(req)
+    const result = await removeCustomDomain(req.params.id, req.params.domainId, { actorEmail })
+    return sendJson(res, 200, result)
   } catch (error) {
     return handleApiError(res, error)
   }

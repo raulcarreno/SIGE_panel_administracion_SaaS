@@ -41,7 +41,29 @@ paths:
         '200':
           description: Tenant list
     post:
-      summary: Register tenant
+      summary: Register tenant (URLs derived from slug SaaS hosts when omitted)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [slug, controlToken]
+              properties:
+                slug:
+                  type: string
+                displayName:
+                  type: string
+                controlToken:
+                  type: string
+                baseUrl:
+                  type: string
+                  description: Optional override; default https://erp.<slug>.findspo.com
+                webBaseUrl:
+                  type: string
+                  description: Optional override; default https://www.<slug>.findspo.com
+                provisionDomains:
+                  type: boolean
+                  description: If true, run full-auto DNS/Ingress/cert after create
       responses:
         '201':
           description: Created tenant
@@ -125,3 +147,91 @@ paths:
       responses:
         '200':
           description: Audit entries
+  /api/superadmin/tenants/{id}/domains:
+    get:
+      summary: SaaS + custom domain status for tenant
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Domain status, custom domains, jobs, Ingress IP
+  /api/superadmin/tenants/{id}/domains/provision:
+    post:
+      summary: Apply GKE Ingress + ManagedCertificate; returns manual IONOS DNS instructions
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ingress/cert applied plus manual A-record instructions
+        '503':
+          description: Ingress IP unavailable
+  /api/superadmin/tenants/{id}/domains/custom:
+    post:
+      summary: Register a custom domain (pending DNS verification)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, hostname]
+              properties:
+                kind:
+                  type: string
+                  enum: [erp, web]
+                hostname:
+                  type: string
+                  example: www.cliente.com
+      responses:
+        '201':
+          description: Custom domain registered with CNAME instructions
+  /api/superadmin/tenants/{id}/domains/custom/{domainId}/verify:
+    post:
+      summary: Verify DNS and add host to Ingress + ManagedCertificate
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: domainId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verified and provisioned
+        '400':
+          description: DNS not pointing to expected target
+  /api/superadmin/tenants/{id}/domains/custom/{domainId}:
+    delete:
+      summary: Remove custom domain from registry and re-apply Ingress/cert
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: domainId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Removed

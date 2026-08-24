@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { apiRequest } from '../../lib/api'
 import TenantStatusBadge from '../../components/TenantStatusBadge'
 import TenantSectionNav from '../../components/tenant/TenantSectionNav'
 import TenantComposition from '../../components/tenant/TenantComposition'
 import TenantVersioning from '../../components/tenant/TenantVersioning'
+import TenantDomains from '../../components/tenant/TenantDomains'
 import PageHeader from '../../components/ui/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
@@ -22,15 +23,16 @@ function toDatetimeLocal(value) {
 
 export default function TenantDetailPage() {
   const { id } = useParams()
+  const location = useLocation()
   const { t } = useTranslation()
-  const [tab, setTab] = useState('overview')
+  const [tab, setTab] = useState(location.state?.domainWarning ? 'domains' : 'overview')
   const [tenant, setTenant] = useState(null)
   const [configData, setConfigData] = useState(null)
   const [settingsData, setSettingsData] = useState(null)
   const [migrationsData, setMigrationsData] = useState(null)
   const [auditEntries, setAuditEntries] = useState([])
   const [versioningStatus, setVersioningStatus] = useState(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(location.state?.domainWarning || '')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -288,6 +290,10 @@ export default function TenantDetailPage() {
                 ) : null}
               </div>
             </>
+          ) : null}
+
+          {tab === 'domains' ? (
+            <TenantDomains tenantId={id} onTenantUpdated={loadTenant} />
           ) : null}
 
           {tab === 'versioning' ? (
