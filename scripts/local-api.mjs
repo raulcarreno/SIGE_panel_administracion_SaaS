@@ -10,9 +10,9 @@ import {
   toMockRequest,
 } from '../server/requestAdapter.js'
 
-const PORT = Number(process.env.API_PORT || 3001)
-
 loadEnvFile()
+
+const PORT = Number(process.env.API_PORT || 3001)
 
 const server = createServer(async (req, res) => {
   const { pathname, query } = parseUrl(req.url || '/')

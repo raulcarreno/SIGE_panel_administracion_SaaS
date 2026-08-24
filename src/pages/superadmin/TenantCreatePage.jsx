@@ -15,6 +15,7 @@ export default function TenantCreatePage() {
     slug: '',
     displayName: '',
     baseUrl: '',
+    webBaseUrl: '',
     controlToken: '',
     databaseName: '',
     notes: '',
@@ -59,6 +60,8 @@ export default function TenantCreatePage() {
 
       {error ? <Alert variant="error">{error}</Alert> : null}
 
+      <Alert variant="info">{t('composition.createIntro')}</Alert>
+
       <form className="card form-grid" onSubmit={handleSubmit}>
         <div className="form-section">
           <h2 className="form-section__title">{t('form.identity')}</h2>
@@ -80,26 +83,59 @@ export default function TenantCreatePage() {
         </div>
 
         <div className="form-section">
-          <h2 className="form-section__title">{t('form.connection')}</h2>
-          <label>
-            {t('form.baseUrl')}
-            <input
-              required
-              type="url"
-              value={form.baseUrl}
-              onChange={(e) => updateField('baseUrl', e.target.value)}
-              placeholder="https://tenant.example.com"
-            />
-          </label>
-          <label>
-            {t('form.controlToken')}
-            <input
-              required
-              type="password"
-              value={form.controlToken}
-              onChange={(e) => updateField('controlToken', e.target.value)}
-            />
-          </label>
+          <h2 className="form-section__title">{t('composition.blockTitle')}</h2>
+          <p className="form-hint" style={{ marginBottom: '1rem' }}>
+            {t('composition.blockHint')}
+          </p>
+
+          <div className="tenant-composition__grid tenant-composition__grid--form">
+            <div className="tenant-pod tenant-pod--form">
+              <p className="tenant-pod__role">{t('composition.erpRole')}</p>
+              <h3 className="tenant-pod__name">{t('composition.erpName')}</h3>
+              <p className="tenant-pod__desc">{t('composition.erpDesc')}</p>
+              <label>
+                {t('form.baseUrl')}
+                <input
+                  required
+                  type="url"
+                  value={form.baseUrl}
+                  onChange={(e) => updateField('baseUrl', e.target.value)}
+                  placeholder="https://erp.cliente.example.com"
+                />
+              </label>
+              <label>
+                {t('form.controlToken')}
+                <input
+                  required
+                  type="password"
+                  value={form.controlToken}
+                  onChange={(e) => updateField('controlToken', e.target.value)}
+                />
+                <span className="form-hint">{t('form.controlTokenHint')}</span>
+              </label>
+            </div>
+
+            <div className="tenant-pod tenant-pod--form">
+              <p className="tenant-pod__role">{t('composition.webRole')}</p>
+              <h3 className="tenant-pod__name">{t('composition.webName')}</h3>
+              <p className="tenant-pod__desc">{t('composition.webDesc')}</p>
+              <label>
+                {t('form.webBaseUrl')}
+                <input
+                  required
+                  type="url"
+                  value={form.webBaseUrl}
+                  onChange={(e) => updateField('webBaseUrl', e.target.value)}
+                  placeholder="https://www.cliente.example.com"
+                />
+                <span className="form-hint">{t('form.webBaseUrlHint')}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <h2 className="form-section__title">{t('form.notes')}</h2>
           <label>
             {t('form.databaseName')}
             <input
@@ -108,10 +144,6 @@ export default function TenantCreatePage() {
               placeholder="sige_slug"
             />
           </label>
-        </div>
-
-        <div className="form-section">
-          <h2 className="form-section__title">{t('form.notes')}</h2>
           <label>
             {t('form.notes')}
             <textarea

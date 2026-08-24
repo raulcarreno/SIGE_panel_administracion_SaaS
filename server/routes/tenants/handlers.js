@@ -11,9 +11,25 @@ import { listAuditLog, writeAuditLog } from '../../../api/_lib/auditLog.js'
 import { resolveTenantCredentials } from '../../../api/_lib/tenantContext.js'
 import { syncTenantSnapshot } from '../../../api/_lib/tenantSync.js'
 import * as controlApi from '../../../api/_lib/controlApiClient.js'
+import {
+  deployTenant,
+  getVersioningStatus,
+  promoteFromMain,
+} from '../../../api/_lib/deployRunner.js'
+import { listDeployJobs } from '../../../api/_lib/versioningRepository.js'
 
 async function getActorEmail(req) {
   return req.superadmin?.email || req.superadmin?.sub || 'unknown'
+}
+
+/**
+ * After any Control API mutation that changes fields exposed in /api/control/status,
+ * refresh the panel snapshot so list/detail UI (status, maintenance, migrations, etc.)
+ * does not keep stale values until a manual Sync.
+ */
+async function refreshTenantAfterControlMutation(tenantId, credentials) {
+  await syncTenantSnapshot(tenantId, credentials)
+  return getTenantWithSnapshot(tenantId)
 }
 
 export async function listHandler(req, res) {
@@ -39,13 +55,19 @@ export async function dashboardHandler(req, res) {
 export async function createHandler(req, res) {
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' })
   try {
-    const tenant = await createTenant(req.body || {})
+    let tenant = await createTenant(req.body || {})
     await writeAuditLog({
       tenantId: tenant.id,
       action: 'tenant.created',
       actorEmail: await getActorEmail(req),
-      payload: { slug: tenant.slug, baseUrl: tenant.baseUrl },
+      payload: { slug: tenant.slug, baseUrl: tenant.baseUrl, webBaseUrl: tenant.webBaseUrl },
     })
+    try {
+      const credentials = await resolveTenantCredentials(tenant.id)
+      tenant = await refreshTenantAfterControlMutation(tenant.id, credentials)
+    } catch {
+      // Registration succeeds even if the pod is not reachable yet
+    }
     return sendJson(res, 201, { tenant })
   } catch (error) {
     return handleApiError(res, error)
@@ -135,7 +157,8 @@ export async function configPutHandler(req, res) {
       actorEmail: await getActorEmail(req),
       payload: req.body || {},
     })
-    return sendJson(res, 200, result)
+    const tenant = await refreshTenantAfterControlMutation(req.params.id, credentials)
+    return sendJson(res, 200, { ...result, tenant })
   } catch (error) {
     return handleApiError(res, error)
   }
@@ -163,7 +186,8 @@ export async function settingsPutHandler(req, res) {
       actorEmail: await getActorEmail(req),
       payload: { keys: Object.keys(req.body || {}) },
     })
-    return sendJson(res, 200, result)
+    const tenant = await refreshTenantAfterControlMutation(req.params.id, credentials)
+    return sendJson(res, 200, { ...result, tenant })
   } catch (error) {
     return handleApiError(res, error)
   }
@@ -191,7 +215,8 @@ export async function migrationsRunHandler(req, res) {
       actorEmail: await getActorEmail(req),
       payload: result,
     })
-    return sendJson(res, 200, result)
+    const tenant = await refreshTenantAfterControlMutation(req.params.id, credentials)
+    return sendJson(res, 200, { ...result, tenant })
   } catch (error) {
     return handleApiError(res, error)
   }
@@ -209,7 +234,11 @@ export async function maintenanceHandler(req, res) {
       actorEmail: await getActorEmail(req),
       payload: { enabled },
     })
-    return sendJson(res, 200, result)
+    const tenant = await refreshTenantAfterControlMutation(req.params.id, credentials)
+    return sendJson(res, 200, {
+      ...result,
+      tenant,
+    })
   } catch (error) {
     return handleApiError(res, error)
   }
@@ -246,6 +275,53 @@ export async function syncAllHandler(req, res) {
       }
     }
     return sendJson(res, 200, { results })
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function versioningGetHandler(req, res) {
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const status = await getVersioningStatus(req.params.id)
+    return sendJson(res, 200, status)
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function versioningPromoteHandler(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const actorEmail = await getActorEmail(req)
+    const component = req.body?.component || 'erp'
+    const result = await promoteFromMain(req.params.id, { component, actorEmail })
+    return sendJson(res, 200, result)
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function versioningDeployHandler(req, res) {
+  if (req.method !== 'POST') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const actorEmail = await getActorEmail(req)
+    const component = req.body?.component || 'erp'
+    const ref = req.body?.ref || null
+    const result = await deployTenant(req.params.id, { component, actorEmail, ref })
+    return sendJson(res, 200, result)
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function versioningJobsHandler(req, res) {
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const jobs = await listDeployJobs(req.params.id, {
+      limit: Number(req.query?.limit) || 20,
+    })
+    return sendJson(res, 200, { jobs })
   } catch (error) {
     return handleApiError(res, error)
   }

@@ -18,6 +18,10 @@ import {
   settingsPutHandler,
   syncAllHandler,
   syncHandler,
+  versioningDeployHandler,
+  versioningGetHandler,
+  versioningJobsHandler,
+  versioningPromoteHandler,
 } from './routes/tenants/handlers.js'
 import {
   getGoogleClientId,
@@ -56,6 +60,10 @@ const TENANT_ROUTES = [
   { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/migrations\/run$/, methods: { POST: migrationsRunHandler } },
   { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/maintenance$/, methods: { POST: maintenanceHandler } },
   { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/audit$/, methods: { GET: auditHandler } },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning$/, methods: { GET: versioningGetHandler } },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning\/promote$/, methods: { POST: versioningPromoteHandler } },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning\/deploy$/, methods: { POST: versioningDeployHandler } },
+  { pattern: /^\/api\/superadmin\/tenants\/([^/]+)\/versioning\/jobs$/, methods: { GET: versioningJobsHandler } },
 ]
 
 function buildPathname(segments) {

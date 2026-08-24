@@ -8,6 +8,7 @@ import EmptyState from '../../components/ui/EmptyState'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
 import TenantStatusBadge from '../../components/TenantStatusBadge'
+import TenantComposition from '../../components/tenant/TenantComposition'
 
 export default function TenantsListPage() {
   const { t } = useTranslation()
@@ -16,21 +17,18 @@ export default function TenantsListPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    apiRequest('/api/superadmin/tenants')
+    apiRequest('/api/superadmin/tenants?status=active')
       .then((data) => setTenants(data.tenants))
       .catch((err) => setError(err.message))
   }, [])
 
   const columns = [
     { key: 'slug', label: t('table.slug') },
+    { key: 'displayName', label: t('form.displayName') },
     {
-      key: 'baseUrl',
-      label: t('table.url'),
-      render: (row) => (
-        <a href={row.baseUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-          {row.baseUrl}
-        </a>
-      ),
+      key: 'composition',
+      label: t('composition.blockTitle'),
+      render: (row) => <TenantComposition tenant={row} compact />,
     },
     {
       key: 'status',

@@ -14,6 +14,7 @@ Read before any code change:
 
 ## Non-negotiable rules
 
+- A **tenant** is the minimum SIGE block: **ERP (billing CRM)** + **Web CMS** (shared platform config). Registry fields: `base_url` + `web_base_url`
 - SDD then TDD then minimal implementation
 - Never store `CONTROL_API_TOKEN` in plain text — encrypt with `PANEL_SECRETS_KEY` (AES-GCM)
 - All pod mutations go through `controlApiClient.js` against the monolith Control API

@@ -1,6 +1,11 @@
 # Tenant operations via Control API
 
+A **tenant** is the minimum SIGE block: **ERP (billing CRM)** + **Web CMS**, sharing platform config.
+The panel stores `base_url` (ERP, Control API target) and `web_base_url` (Web CMS of the same tenant).
+
 All remote operations use `controlApiClient.js` with tenant `base_url` and decrypted token.
+Mutations that change fields reflected in `/api/control/status` (config, settings, migrations, maintenance)
+**must** call `syncTenantSnapshot` afterward so list/detail UI does not keep a stale snapshot.
 
 | Panel action | Control API | Notes |
 |--------------|-------------|-------|

@@ -1,0 +1,2 @@
+ALTER TABLE tenants
+  ADD COLUMN IF NOT EXISTS web_base_url TEXT;

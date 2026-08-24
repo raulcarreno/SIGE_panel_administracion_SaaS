@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { apiRequest } from '../../lib/api'
 import TenantStatusBadge from '../../components/TenantStatusBadge'
 import TenantSectionNav from '../../components/tenant/TenantSectionNav'
+import TenantComposition from '../../components/tenant/TenantComposition'
+import TenantVersioning from '../../components/tenant/TenantVersioning'
 import PageHeader from '../../components/ui/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
@@ -27,6 +29,7 @@ export default function TenantDetailPage() {
   const [settingsData, setSettingsData] = useState(null)
   const [migrationsData, setMigrationsData] = useState(null)
   const [auditEntries, setAuditEntries] = useState([])
+  const [versioningStatus, setVersioningStatus] = useState(null)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
@@ -63,14 +66,60 @@ export default function TenantDetailPage() {
         .then((data) => setAuditEntries(data.entries))
         .catch((err) => setError(err.message))
     }
+    if (tab === 'versioning') {
+      apiRequest(`/api/superadmin/tenants/${id}/versioning`)
+        .then(setVersioningStatus)
+        .catch((err) => setError(err.message))
+    }
   }, [tab, id])
 
+  async function refreshVersioning() {
+    const data = await apiRequest(`/api/superadmin/tenants/${id}/versioning`)
+    setVersioningStatus(data)
+  }
+
+  async function handlePromote(component) {
+    setLoading(true)
+    setError('')
+    setMessage('')
+    try {
+      await apiRequest(`/api/superadmin/tenants/${id}/versioning/promote`, {
+        method: 'POST',
+        body: { component },
+      })
+      await refreshVersioning()
+      setMessage(t('versioning.promoteOk'))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleDeploy(component) {
+    setLoading(true)
+    setError('')
+    setMessage('')
+    try {
+      await apiRequest(`/api/superadmin/tenants/${id}/versioning/deploy`, {
+        method: 'POST',
+        body: { component },
+      })
+      await refreshVersioning()
+      setMessage(t('versioning.deployOk'))
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
   async function handleSync() {
     setLoading(true)
     setError('')
     try {
-      await apiRequest(`/api/superadmin/tenants/${id}/sync`, { method: 'POST' })
-      await loadTenant()
+      const result = await apiRequest(`/api/superadmin/tenants/${id}/sync`, { method: 'POST' })
+      if (result.tenant) setTenant(result.tenant)
+      else await loadTenant()
       setMessage(t('syncComplete'))
     } catch (err) {
       setError(err.message)
@@ -87,9 +136,11 @@ export default function TenantDetailPage() {
         method: 'PUT',
         body,
       })
-      setConfigData(result)
+      const { tenant: updatedTenant, ...configResult } = result
+      setConfigData(configResult)
+      if (updatedTenant) setTenant(updatedTenant)
+      else await loadTenant()
       setMessage(t('configSaved'))
-      await loadTenant()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -105,7 +156,9 @@ export default function TenantDetailPage() {
         method: 'PUT',
         body,
       })
-      setSettingsData(result)
+      const { tenant: updatedTenant, ...settingsResult } = result
+      setSettingsData(settingsResult)
+      if (updatedTenant) setTenant(updatedTenant)
       setMessage(t('settingsSaved'))
     } catch (err) {
       setError(err.message)
@@ -119,12 +172,16 @@ export default function TenantDetailPage() {
     setLoading(true)
     setError('')
     try {
-      await apiRequest(`/api/superadmin/tenants/${id}/maintenance`, {
+      const result = await apiRequest(`/api/superadmin/tenants/${id}/maintenance`, {
         method: 'POST',
         body: { enabled },
       })
+      if (result.tenant) {
+        setTenant(result.tenant)
+      } else {
+        await loadTenant()
+      }
       setMessage(t('maintenanceUpdated'))
-      await loadTenant()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -140,7 +197,9 @@ export default function TenantDetailPage() {
       const result = await apiRequest(`/api/superadmin/tenants/${id}/migrations/run`, {
         method: 'POST',
       })
-      setMigrationsData(result)
+      const { tenant: updatedTenant, ...migrationsResult } = result
+      setMigrationsData(migrationsResult)
+      if (updatedTenant) setTenant(updatedTenant)
       setMessage(t('migrationsRun'))
     } catch (err) {
       setError(err.message)
@@ -152,12 +211,17 @@ export default function TenantDetailPage() {
   if (!tenant) return <p>{t('loading')}</p>
 
   const snapshot = tenant.snapshot?.payload
+  const subtitle = [
+    tenant.slug,
+    t('composition.subtitle'),
+    tenant.webBaseUrl ? t('composition.complete') : t('composition.incomplete'),
+  ].join(' · ')
 
   return (
     <div>
       <PageHeader
         title={tenant.displayName}
-        subtitle={`${tenant.slug} — ${tenant.baseUrl}`}
+        subtitle={subtitle}
         breadcrumbs={
           <ol className="breadcrumbs">
             <li><Link to="/superadmin/tenants">{t('nav.tenants')}</Link></li>
@@ -166,66 +230,79 @@ export default function TenantDetailPage() {
           </ol>
         }
         actions={
-          <>
-            <Button onClick={handleSync} disabled={loading}>{t('sync')}</Button>
-            <Button
-              variant="secondary"
-              as="a"
-              href={`${tenant.baseUrl}/admin`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t('adminTenant')}
-            </Button>
-          </>
+          <Button onClick={handleSync} disabled={loading}>{t('sync')}</Button>
         }
       />
 
       {error ? <Alert variant="error">{error}</Alert> : null}
       {message ? <Alert variant="success">{message}</Alert> : null}
+      {!tenant.webBaseUrl ? (
+        <Alert variant="error">{t('composition.incompleteWarning')}</Alert>
+      ) : null}
 
       <div className="tenant-layout">
         <TenantSectionNav active={tab} onChange={setTab} />
 
         <div>
           {tab === 'overview' ? (
-            <div className="card">
-              <div className="overview-grid">
-                <div className="overview-item">
-                  <p className="overview-item__label">Database</p>
-                  <p className="overview-item__value">{tenant.databaseName || '-'}</p>
-                </div>
-                <div className="overview-item">
-                  <p className="overview-item__label">Estado local</p>
-                  <p className="overview-item__value">{tenant.status}</p>
-                </div>
-                <div className="overview-item">
-                  <p className="overview-item__label">Estado remoto</p>
-                  <p className="overview-item__value"><TenantStatusBadge snapshot={snapshot} /></p>
-                </div>
-                <div className="overview-item">
-                  <p className="overview-item__label">DB pod</p>
-                  <p className="overview-item__value">{snapshot?.db || '-'}</p>
-                </div>
-                <div className="overview-item">
-                  <p className="overview-item__label">Versión</p>
-                  <p className="overview-item__value">{snapshot?.appVersion || '-'}</p>
-                </div>
-                <div className="overview-item">
-                  <p className="overview-item__label">Uptime</p>
-                  <p className="overview-item__value">
-                    {snapshot?.uptimeSeconds != null ? `${snapshot.uptimeSeconds}s` : '-'}
-                  </p>
-                </div>
-                <div className="overview-item">
-                  <p className="overview-item__label">Migraciones pendientes</p>
-                  <p className="overview-item__value">{snapshot?.migrationsPending ?? '-'}</p>
-                </div>
+            <>
+              <div className="card">
+                <TenantComposition tenant={tenant} />
               </div>
-              {tenant.snapshot?.syncError ? (
-                <Alert variant="error">Sync error: {tenant.snapshot.syncError}</Alert>
-              ) : null}
-            </div>
+              <div className="card">
+                <h2 className="card__title">{t('overview')}</h2>
+                <div className="overview-grid">
+                  <div className="overview-item">
+                    <p className="overview-item__label">Database</p>
+                    <p className="overview-item__value">{tenant.databaseName || '-'}</p>
+                  </div>
+                  <div className="overview-item">
+                    <p className="overview-item__label">Estado local</p>
+                    <p className="overview-item__value">{tenant.status}</p>
+                  </div>
+                  <div className="overview-item">
+                    <p className="overview-item__label">Estado remoto</p>
+                    <p className="overview-item__value"><TenantStatusBadge snapshot={snapshot} /></p>
+                  </div>
+                  <div className="overview-item">
+                    <p className="overview-item__label">DB pod</p>
+                    <p className="overview-item__value">{snapshot?.db || '-'}</p>
+                  </div>
+                  <div className="overview-item">
+                    <p className="overview-item__label">Versión</p>
+                    <p className="overview-item__value">{snapshot?.appVersion || '-'}</p>
+                  </div>
+                  <div className="overview-item">
+                    <p className="overview-item__label">Uptime</p>
+                    <p className="overview-item__value">
+                      {snapshot?.uptimeSeconds != null ? `${snapshot.uptimeSeconds}s` : '-'}
+                    </p>
+                  </div>
+                  <div className="overview-item">
+                    <p className="overview-item__label">Migraciones pendientes</p>
+                    <p className="overview-item__value">{snapshot?.migrationsPending ?? '-'}</p>
+                  </div>
+                </div>
+                {tenant.snapshot?.syncError ? (
+                  <Alert variant="error">Sync error: {tenant.snapshot.syncError}</Alert>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+
+          {tab === 'versioning' ? (
+            <TenantVersioning
+              status={versioningStatus}
+              loading={loading}
+              onPromote={handlePromote}
+              onDeploy={handleDeploy}
+              onRefresh={() => {
+                setLoading(true)
+                refreshVersioning()
+                  .catch((err) => setError(err.message))
+                  .finally(() => setLoading(false))
+              }}
+            />
           ) : null}
 
           {tab === 'modules' && configData ? (
