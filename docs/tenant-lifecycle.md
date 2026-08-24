@@ -17,8 +17,19 @@ Both pods share the platform config database (`CONFIG_DATABASE_URL` / `sige_conf
 
 ## 1. Deploy shared platform (outside panel, once)
 
-1. Create shared Postgres / platform pods (`sige-erp`, `sige-web`, `sige-panel`).
+1. Create shared Postgres + panel + optional demo ERP/Web (`sige-erp`, `sige-web`, `sige-panel`).
 2. Apply platform Ingress + cert for panel host.
+
+**Isolated tenants** (recommended): before registering a client slug, provision its stack:
+
+```bash
+cd SIGE_monolito
+export POSTGRES_PASSWORD=...   # same as cluster postgres
+./deploy/gcp-gke/provision-tenant-stack.sh <slug>
+```
+
+This creates DBs `sige_<slug>_{erp,config,content}` and Deployments/Services `sige-erp-<slug>` / `sige-web-<slug>`.  
+Ingress provisioned from the panel routes to those Services (not the shared demo).
 
 See `SIGE_monolito` / `SIGE_monolito_web` deploy docs and `docs/cutover-gke-platform.md`.
 
@@ -89,7 +100,8 @@ From tenant detail:
 | `DNS_ZONE_NAME` | Zone label for instructions (default `findspo.com`) |
 | `SAAS_BASE_DOMAIN` | Host suffix (default `findspo.com`) |
 | `INGRESS_IP` | Optional override; else read from platform Ingress |
-| `PLATFORM_ERP_SERVICE` / `PLATFORM_WEB_SERVICE` | Ingress backends (default `sige-erp` / `sige-web`) |
+| `PLATFORM_ERP_SERVICE_TEMPLATE` / `PLATFORM_WEB_SERVICE_TEMPLATE` | Isolated backends (default `sige-erp-{slug}` / `sige-web-{slug}`) |
+| `PLATFORM_TENANT_ISOLATED=0` + `PLATFORM_ERP_SERVICE` / `PLATFORM_WEB_SERVICE` | Legacy shared demo backends |
 
 ## References
 

@@ -34,6 +34,36 @@ export function normalizeSlug(slug) {
 }
 
 /**
+ * Isolated tenant Services (default: sige-erp-{slug}).
+ * Set PLATFORM_TENANT_ISOLATED=0 to use shared PLATFORM_ERP_SERVICE (legacy demo).
+ */
+export function tenantErpServiceName(slug) {
+  const normalized = normalizeSlug(slug)
+  if (process.env.PLATFORM_TENANT_ISOLATED === '0') {
+    return process.env.PLATFORM_ERP_SERVICE?.trim() || 'sige-erp'
+  }
+  const tpl = process.env.PLATFORM_ERP_SERVICE_TEMPLATE?.trim() || 'sige-erp-{slug}'
+  return tpl.replaceAll('{slug}', normalized)
+}
+
+export function tenantWebServiceName(slug) {
+  const normalized = normalizeSlug(slug)
+  if (process.env.PLATFORM_TENANT_ISOLATED === '0') {
+    return process.env.PLATFORM_WEB_SERVICE?.trim() || 'sige-web'
+  }
+  const tpl = process.env.PLATFORM_WEB_SERVICE_TEMPLATE?.trim() || 'sige-web-{slug}'
+  return tpl.replaceAll('{slug}', normalized)
+}
+
+export function tenantErpDeploymentName(slug) {
+  return tenantErpServiceName(slug)
+}
+
+export function tenantWebDeploymentName(slug) {
+  return tenantWebServiceName(slug)
+}
+
+/**
  * Canonical SaaS hosts: erp.<slug>.<base> + www.<slug>.<base>
  */
 export function deriveSaasHosts(slug, baseDomain = getSaasBaseDomain()) {
@@ -128,10 +158,12 @@ export function buildTenantDomainManifest({
   erpHost,
   webHost,
   customHosts = [],
-  erpService = 'sige-erp',
-  webService = 'sige-web',
+  erpService,
+  webService,
 }) {
   const normalizedSlug = normalizeSlug(slug)
+  const resolvedErp = erpService || tenantErpServiceName(normalizedSlug)
+  const resolvedWeb = webService || tenantWebServiceName(normalizedSlug)
   const certName = `sige-cert-${normalizedSlug}`
   const ingressName = `sige-tenant-${normalizedSlug}`
   const domains = [
@@ -142,18 +174,18 @@ export function buildTenantDomainManifest({
   const uniqueDomains = [...new Set(domains)]
 
   const hostService = new Map()
-  hostService.set(normalizeHostname(erpHost), erpService)
-  hostService.set(normalizeHostname(webHost), webService)
+  hostService.set(normalizeHostname(erpHost), resolvedErp)
+  hostService.set(normalizeHostname(webHost), resolvedWeb)
   for (const entry of customHosts) {
     const host = normalizeHostname(entry.hostname || entry)
     if (!host) continue
     const kind = entry.kind || 'web'
-    hostService.set(host, kind === 'erp' ? erpService : webService)
+    hostService.set(host, kind === 'erp' ? resolvedErp : resolvedWeb)
   }
 
   const rules = uniqueDomains.map((host) => ({
     host,
-    service: hostService.get(host) || webService,
+    service: hostService.get(host) || resolvedWeb,
   }))
 
   const certYaml = [
@@ -196,6 +228,8 @@ export function buildTenantDomainManifest({
     certName,
     ingressName,
     domains: uniqueDomains,
+    erpService: resolvedErp,
+    webService: resolvedWeb,
     yaml: `${certYaml}\n---\n${ingressYaml}\n`,
   }
 }

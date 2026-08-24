@@ -58,12 +58,12 @@ describe('tenantDomains', () => {
       erpHost: 'erp.acme.findspo.com',
       webHost: 'www.acme.findspo.com',
       customHosts: [{ hostname: 'www.cliente.com', kind: 'web' }],
-      erpService: 'sige-erp',
-      webService: 'sige-web',
     })
 
     assert.equal(manifest.certName, 'sige-cert-acme')
     assert.equal(manifest.ingressName, 'sige-tenant-acme')
+    assert.equal(manifest.erpService, 'sige-erp-acme')
+    assert.equal(manifest.webService, 'sige-web-acme')
     assert.deepEqual(manifest.domains, [
       'erp.acme.findspo.com',
       'www.acme.findspo.com',
@@ -71,8 +71,28 @@ describe('tenantDomains', () => {
     ])
     assert.match(manifest.yaml, /kind: ManagedCertificate/)
     assert.match(manifest.yaml, /host: www\.cliente\.com/)
-    assert.match(manifest.yaml, /name: sige-web/)
+    assert.match(manifest.yaml, /name: sige-web-acme/)
     assert.match(manifest.yaml, /networking\.gke\.io\/managed-certificates: sige-cert-acme/)
+  })
+
+  it('uses shared services when PLATFORM_TENANT_ISOLATED=0', () => {
+    process.env.PLATFORM_TENANT_ISOLATED = '0'
+    process.env.PLATFORM_ERP_SERVICE = 'sige-erp'
+    process.env.PLATFORM_WEB_SERVICE = 'sige-web'
+    try {
+      const manifest = buildTenantDomainManifest({
+        slug: 'acme',
+        namespace: 'sige-saas-prod',
+        erpHost: 'erp.acme.findspo.com',
+        webHost: 'www.acme.findspo.com',
+      })
+      assert.equal(manifest.erpService, 'sige-erp')
+      assert.equal(manifest.webService, 'sige-web')
+    } finally {
+      delete process.env.PLATFORM_TENANT_ISOLATED
+      delete process.env.PLATFORM_ERP_SERVICE
+      delete process.env.PLATFORM_WEB_SERVICE
+    }
   })
 
   it('evaluates CNAME verification as ok', async () => {

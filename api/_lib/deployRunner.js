@@ -218,7 +218,7 @@ async function deployOne(kind, tenant) {
   const pathGuard = await assertTenantBranchPaths(kind, branch)
   const head = await github.getBranchHead(kind, branch)
   const image = github.imageNameFor(kind, tenant.slug, head.shortSha)
-  const deployment = github.deploymentNameFor(kind)
+  const deployment = github.deploymentNameFor(kind, tenant.slug)
   const namespace = process.env.GKE_NAMESPACE?.trim() || 'sige-saas-prod'
   const project = process.env.GCP_PROJECT_ID?.trim() || 'findspo-core'
   const region = process.env.GKE_REGION?.trim() || 'europe-southwest1'

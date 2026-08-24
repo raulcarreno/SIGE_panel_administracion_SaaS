@@ -154,6 +154,14 @@ export function imageNameFor(kind, slug, shortSha) {
   return `${registry}/${name}:${slug}-${shortSha}`
 }
 
-export function deploymentNameFor(kind) {
-  return kind === 'web' ? 'sige-web' : 'sige-erp'
+export function deploymentNameFor(kind, slug) {
+  const normalized = String(slug || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/^-+|-+$/g, '')
+  if (!normalized || process.env.PLATFORM_TENANT_ISOLATED === '0') {
+    return kind === 'web' ? 'sige-web' : 'sige-erp'
+  }
+  return kind === 'web' ? `sige-web-${normalized}` : `sige-erp-${normalized}`
 }

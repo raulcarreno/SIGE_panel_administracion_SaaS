@@ -118,8 +118,6 @@ async function applyIngressAndCert(tenant, customDomains) {
     erpHost: tenant.erpHost,
     webHost: tenant.webHost,
     customHosts: provisionedCustom,
-    erpService: config.erpService,
-    webService: config.webService,
   })
 
   const applyResult = await gke.applyDomainManifest(manifest.yaml)
