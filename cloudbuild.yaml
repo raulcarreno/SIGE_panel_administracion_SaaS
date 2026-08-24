@@ -1,5 +1,5 @@
 # Cloud Build for SIGE Superadmin Panel
-# Substitutions: _IMAGE, _APP_VERSION, _GIT_SHA, _VITE_GOOGLE_CLIENT_ID
+# Substitutions: _IMAGE, _VITE_GOOGLE_CLIENT_ID
 steps:
   - name: gcr.io/cloud-builders/docker
     args:
@@ -13,8 +13,6 @@ images:
   - ${_IMAGE}
 substitutions:
   _IMAGE: europe-southwest1-docker.pkg.dev/findspo-core/fraian-saas/sige-panel:dev
-  _APP_VERSION: 0.0.0
-  _GIT_SHA: unknown
   _VITE_GOOGLE_CLIENT_ID: ''
 options:
   logging: CLOUD_LOGGING_ONLY
