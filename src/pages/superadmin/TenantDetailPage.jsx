@@ -7,6 +7,7 @@ import TenantSectionNav from '../../components/tenant/TenantSectionNav'
 import TenantComposition from '../../components/tenant/TenantComposition'
 import TenantVersioning from '../../components/tenant/TenantVersioning'
 import TenantDomains from '../../components/tenant/TenantDomains'
+import TenantMonitoring from '../../components/tenant/TenantMonitoring'
 import PageHeader from '../../components/ui/PageHeader'
 import Alert from '../../components/ui/Alert'
 import Button from '../../components/ui/Button'
@@ -290,6 +291,10 @@ export default function TenantDetailPage() {
                 ) : null}
               </div>
             </>
+          ) : null}
+
+          {tab === 'monitoring' ? (
+            <TenantMonitoring tenantId={id} />
           ) : null}
 
           {tab === 'domains' ? (

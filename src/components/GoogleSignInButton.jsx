@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react'
 import { apiRequest, setToken } from '../lib/api'
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() || ''
+
 export default function GoogleSignInButton({ onSuccess, onError }) {
   const buttonRef = useRef(null)
 
@@ -8,17 +10,8 @@ export default function GoogleSignInButton({ onSuccess, onError }) {
     let cancelled = false
 
     async function init() {
-      let clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-      if (!clientId) {
-        try {
-          const config = await apiRequest('/api/superadmin/public-config')
-          clientId = config.googleClientId
-        } catch {
-          // ignore
-        }
-      }
-      if (!clientId) {
-        onError?.('Google Sign-In no configurado.')
+      if (!GOOGLE_CLIENT_ID) {
+        onError?.('Google Sign-In no configurado (VITE_GOOGLE_CLIENT_ID).')
         return
       }
 
@@ -26,7 +19,7 @@ export default function GoogleSignInButton({ onSuccess, onError }) {
       if (cancelled) return
 
       window.google.accounts.id.initialize({
-        client_id: clientId,
+        client_id: GOOGLE_CLIENT_ID,
         callback: async (response) => {
           try {
             const result = await apiRequest('/api/superadmin/login', {

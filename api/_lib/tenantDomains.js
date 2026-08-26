@@ -34,12 +34,26 @@ export function normalizeSlug(slug) {
 }
 
 /**
+ * Platform demo tenant uses shared Services `sige-erp` / `sige-web`
+ * (hosts sige-saas.findspo.com / www.sige-saas.findspo.com), not sige-erp-{slug}.
+ */
+export function getPlatformDemoSlug() {
+  return normalizeSlug(process.env.PLATFORM_DEMO_SLUG || 'sige-saas')
+}
+
+export function isPlatformDemoSlug(slug) {
+  const demo = getPlatformDemoSlug()
+  return Boolean(demo) && normalizeSlug(slug) === demo
+}
+
+/**
  * Isolated tenant Services (default: sige-erp-{slug}).
  * Set PLATFORM_TENANT_ISOLATED=0 to use shared PLATFORM_ERP_SERVICE (legacy demo).
+ * Platform demo slug always maps to sige-erp / sige-web.
  */
 export function tenantErpServiceName(slug) {
   const normalized = normalizeSlug(slug)
-  if (process.env.PLATFORM_TENANT_ISOLATED === '0') {
+  if (isPlatformDemoSlug(normalized) || process.env.PLATFORM_TENANT_ISOLATED === '0') {
     return process.env.PLATFORM_ERP_SERVICE?.trim() || 'sige-erp'
   }
   const tpl = process.env.PLATFORM_ERP_SERVICE_TEMPLATE?.trim() || 'sige-erp-{slug}'
@@ -48,7 +62,7 @@ export function tenantErpServiceName(slug) {
 
 export function tenantWebServiceName(slug) {
   const normalized = normalizeSlug(slug)
-  if (process.env.PLATFORM_TENANT_ISOLATED === '0') {
+  if (isPlatformDemoSlug(normalized) || process.env.PLATFORM_TENANT_ISOLATED === '0') {
     return process.env.PLATFORM_WEB_SERVICE?.trim() || 'sige-web'
   }
   const tpl = process.env.PLATFORM_WEB_SERVICE_TEMPLATE?.trim() || 'sige-web-{slug}'
@@ -65,6 +79,7 @@ export function tenantWebDeploymentName(slug) {
 
 /**
  * Canonical SaaS hosts: erp.<slug>.<base> + www.<slug>.<base>
+ * Platform demo uses apex hosts: <slug>.<base> + www.<slug>.<base>
  */
 export function deriveSaasHosts(slug, baseDomain = getSaasBaseDomain()) {
   const normalizedSlug = normalizeSlug(slug)
@@ -73,6 +88,13 @@ export function deriveSaasHosts(slug, baseDomain = getSaasBaseDomain()) {
     const error = new Error('slug is required to derive SaaS hosts.')
     error.statusCode = 400
     throw error
+  }
+  if (isPlatformDemoSlug(normalizedSlug)) {
+    return {
+      saasBaseDomain: base,
+      erpHost: `${normalizedSlug}.${base}`,
+      webHost: `www.${normalizedSlug}.${base}`,
+    }
   }
   return {
     saasBaseDomain: base,

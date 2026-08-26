@@ -11,16 +11,25 @@ Panel central de superadmin para orquestar tenants del monolito SIGE vía Contro
 
 ```bash
 cp .env.example .env
-# Edit DATABASE_URL, PANEL_SECRETS_KEY, SUPERADMIN_JWT_SECRET, GOOGLE_CLIENT_ID, SUPERADMIN_ALLOWED_EMAILS
+# Edit DATABASE_URL, PANEL_SECRETS_KEY, SUPERADMIN_JWT_SECRET, SUPERADMIN_ALLOWED_EMAILS
 
 docker compose up -d postgres
 npm install
 npm run db:migrate
+npm run google:oauth:setup   # pega el Client ID Web de sige-saas
 npm run dev:full
 ```
 
 - UI: http://localhost:5173/superadmin
-- API: http://localhost:3001
+- API: http://localhost:3002
+
+## Google OAuth
+
+Mismo patrón que carpinteria:
+
+1. En GCP proyecto **`sige-saas`**, crea un OAuth client tipo **Web application**.
+2. Añade los Authorized JavaScript origins (localhost + dominios findspo).
+3. `npm run google:oauth:setup` escribe `GOOGLE_CLIENT_ID` y `VITE_GOOGLE_CLIENT_ID` en `.env`.
 
 ## Production
 

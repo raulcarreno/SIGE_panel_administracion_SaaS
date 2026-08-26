@@ -9,7 +9,8 @@
 - **Tests**: `node --test` + assert
 - **Forbidden**: Vercel, Turso/libsql, ORMs, SQLite in production
 
-Bootstrap env only: `DATABASE_URL`, `PANEL_SECRETS_KEY`, `SUPERADMIN_JWT_SECRET`, `GOOGLE_CLIENT_ID`, `SUPERADMIN_ALLOWED_EMAILS`, `PORT`, `NODE_ENV`.
+Bootstrap env only: `DATABASE_URL`, `PANEL_SECRETS_KEY`, `SUPERADMIN_JWT_SECRET`, `GOOGLE_CLIENT_ID` / `VITE_GOOGLE_CLIENT_ID` (OAuth Web client from GCP project **sige-saas**), `SUPERADMIN_ALLOWED_EMAILS`, `PORT`, `NODE_ENV`.
+Setup: `npm run google:oauth:setup`.
 
 Tenant operational config lives in each pod via Control API (`/api/control/settings`).
 

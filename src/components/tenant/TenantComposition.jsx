@@ -1,16 +1,24 @@
 import { useTranslation } from 'react-i18next'
 import Button from '../ui/Button'
 
+function publicTenantUrl(host, fallbackUrl) {
+  const hostname = String(host || '').trim()
+  if (hostname) return `https://${hostname.replace(/^https?:\/\//, '')}`
+  const fallback = String(fallbackUrl || '').trim()
+  // Never expose in-cluster Service DNS (sige-erp, sige-web-*) as browser links.
+  if (!fallback || /^https?:\/\/sige-[a-z0-9-]+(\/|$)/i.test(fallback)) return ''
+  return fallback
+}
+
 /**
  * Canonical tenant composition: ERP (billing CRM) + Web CMS.
  * One tenant registry row = both pods sharing platform config.
+ * UI links always use public hosts (erpHost / webHost), not Control API baseUrl.
  */
 export default function TenantComposition({ tenant, compact = false }) {
   const { t } = useTranslation()
-  const erpUrl =
-    tenant?.baseUrl || (tenant?.erpHost ? `https://${tenant.erpHost}` : '')
-  const webUrl =
-    tenant?.webBaseUrl || (tenant?.webHost ? `https://${tenant.webHost}` : '')
+  const erpUrl = publicTenantUrl(tenant?.erpHost, tenant?.baseUrl)
+  const webUrl = publicTenantUrl(tenant?.webHost, tenant?.webBaseUrl)
 
   if (compact) {
     return (

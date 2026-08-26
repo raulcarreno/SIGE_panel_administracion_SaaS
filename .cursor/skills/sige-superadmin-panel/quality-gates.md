@@ -1,6 +1,8 @@
 # Quality gates
 
-Before merging or deploying:
+**Deployment:** changes stay local by default. Do not merge, promote, or deploy to production until the user explicitly requests it (see SKILL.md → Deployment policy).
+
+Before merging or deploying (only when the user asks):
 
 1. `npm run lint` — oxlint, zero errors
 2. `npm test` — all tests pass

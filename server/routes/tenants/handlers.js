@@ -24,6 +24,7 @@ import {
   removeCustomDomain,
   verifyAndProvisionCustomDomain,
 } from '../../../api/_lib/domainProvisioner.js'
+import { getTenantRuntime, getTenantRuntimeLogs } from '../../../api/_lib/tenantRuntime.js'
 
 async function getActorEmail(req) {
   return req.superadmin?.email || req.superadmin?.sub || 'unknown'
@@ -402,6 +403,26 @@ export async function domainsCustomVerifyHandler(req, res) {
     const result = await verifyAndProvisionCustomDomain(req.params.id, req.params.domainId, {
       actorEmail,
     })
+    return sendJson(res, 200, result)
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function runtimeGetHandler(req, res) {
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const runtime = await getTenantRuntime(req.params.id)
+    return sendJson(res, 200, runtime)
+  } catch (error) {
+    return handleApiError(res, error)
+  }
+}
+
+export async function runtimeLogsGetHandler(req, res) {
+  if (req.method !== 'GET') return sendJson(res, 405, { error: 'Method not allowed.' })
+  try {
+    const result = await getTenantRuntimeLogs(req.params.id, req.query || {})
     return sendJson(res, 200, result)
   } catch (error) {
     return handleApiError(res, error)

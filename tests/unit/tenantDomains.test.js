@@ -95,6 +95,24 @@ describe('tenantDomains', () => {
     }
   })
 
+  it('maps platform demo slug to sige-erp/sige-web and apex hosts', async () => {
+    const { tenantErpServiceName, tenantWebServiceName, deriveSaasHosts: derive } = await import(
+      '../../api/_lib/tenantDomains.js'
+    )
+    process.env.PLATFORM_DEMO_SLUG = 'sige-saas'
+    try {
+      assert.equal(tenantErpServiceName('sige-saas'), 'sige-erp')
+      assert.equal(tenantWebServiceName('sige-saas'), 'sige-web')
+      const hosts = derive('sige-saas', 'findspo.com')
+      assert.equal(hosts.erpHost, 'sige-saas.findspo.com')
+      assert.equal(hosts.webHost, 'www.sige-saas.findspo.com')
+      // other tenants stay isolated
+      assert.equal(tenantErpServiceName('reformasbcn'), 'sige-erp-reformasbcn')
+    } finally {
+      delete process.env.PLATFORM_DEMO_SLUG
+    }
+  })
+
   it('evaluates CNAME verification as ok', async () => {
     const dnsApi = {
       async resolveCname() {

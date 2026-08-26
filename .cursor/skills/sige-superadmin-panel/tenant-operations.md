@@ -1,5 +1,7 @@
 # Tenant operations via Control API
 
+**Local-first:** the table below describes production operations. Do not call promote/deploy endpoints, `tenant-deploy.mjs`, or mutating Control API routes on live tenants until the user explicitly asks to deploy.
+
 A **tenant** is the minimum SIGE block: **ERP (billing CRM)** + **Web CMS**, sharing platform config.
 The panel stores `base_url` (ERP, Control API target) and `web_base_url` (Web CMS of the same tenant).
 

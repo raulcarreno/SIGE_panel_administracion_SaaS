@@ -17,6 +17,11 @@
   font-weight: 600;
 }
 
+.muted {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
 .form-section {
   margin-bottom: var(--space-lg);
 }
@@ -491,6 +496,10 @@
   margin-bottom: var(--space-sm);
 }
 
+.card__header-row .card__title {
+  margin-bottom: 0;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -512,4 +521,72 @@
   background: #fff8e6;
   border: 1px solid #e6c200;
   color: #5c4d00;
+}
+
+.tenant-monitoring {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.tenant-monitoring > .card,
+.tenant-monitoring > .versioning-grid {
+  margin-bottom: 0;
+}
+
+.monitoring-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.monitoring-log-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  align-items: end;
+}
+
+.monitoring-log-controls label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.monitoring-log-controls select,
+.monitoring-filter input {
+  min-width: 140px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.875rem;
+}
+
+.monitoring-filter {
+  flex: 1 1 180px;
+}
+
+.monitoring-log-viewer {
+  margin: 0;
+  max-height: 420px;
+  overflow: auto;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }

@@ -13,6 +13,84 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  schemas:
+    TenantRuntimeService:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, crash, pending, unhealthy, missing, unknown]
+        deployment:
+          type: object
+          nullable: true
+          properties:
+            name:
+              type: string
+            replicas:
+              type: integer
+            readyReplicas:
+              type: integer
+            availableReplicas:
+              type: integer
+            image:
+              type: string
+              nullable: true
+        pods:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              component:
+                type: string
+              phase:
+                type: string
+              ready:
+                type: boolean
+              restarts:
+                type: integer
+              image:
+                type: string
+                nullable: true
+              node:
+                type: string
+                nullable: true
+              startedAt:
+                type: string
+                nullable: true
+              containerName:
+                type: string
+                nullable: true
+              reason:
+                type: string
+                nullable: true
+        app:
+          type: object
+          properties:
+            reachable:
+              type: boolean
+            ok:
+              type: boolean
+            error:
+              type: string
+              nullable: true
+    TenantRuntimeEvent:
+      type: object
+      properties:
+        type:
+          type: string
+        reason:
+          type: string
+        message:
+          type: string
+        object:
+          type: string
+        count:
+          type: integer
+        lastTimestamp:
+          type: string
+          nullable: true
 paths:
   /api/superadmin/public-config:
     get:
@@ -147,6 +225,106 @@ paths:
       responses:
         '200':
           description: Audit entries
+  /api/superadmin/tenants/{id}/runtime:
+    get:
+      summary: Cluster workload status and app health for tenant ERP + Web
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Runtime snapshot (cluster may be unavailable in local dev)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [slug, clusterAvailable, services, events]
+                properties:
+                  slug:
+                    type: string
+                  clusterAvailable:
+                    type: boolean
+                  clusterError:
+                    type: string
+                    nullable: true
+                  clusterErrorCode:
+                    type: string
+                    nullable: true
+                  services:
+                    type: object
+                    required: [erp, web]
+                    properties:
+                      erp:
+                        $ref: '#/components/schemas/TenantRuntimeService'
+                      web:
+                        $ref: '#/components/schemas/TenantRuntimeService'
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TenantRuntimeEvent'
+        '404':
+          description: Tenant not found
+  /api/superadmin/tenants/{id}/runtime/logs:
+    get:
+      summary: Recent container logs for a tenant component (ERP or Web)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: component
+          required: true
+          schema:
+            type: string
+            enum: [erp, web]
+        - in: query
+          name: tailLines
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 200
+        - in: query
+          name: previous
+          schema:
+            type: boolean
+            default: false
+          description: Read logs from the previous terminated container (crash)
+      responses:
+        '200':
+          description: Log text for the newest pod of the component
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [component, podName, container, tailLines, previous, logs]
+                properties:
+                  component:
+                    type: string
+                    enum: [erp, web]
+                  podName:
+                    type: string
+                  container:
+                    type: string
+                  tailLines:
+                    type: integer
+                  previous:
+                    type: boolean
+                  previousMissing:
+                    type: boolean
+                  logs:
+                    type: string
+        '400':
+          description: Invalid component or query
+        '404':
+          description: Tenant or pod not found
+        '503':
+          description: Kubernetes API unavailable or forbidden
   /api/superadmin/tenants/{id}/domains:
     get:
       summary: SaaS + custom domain status for tenant

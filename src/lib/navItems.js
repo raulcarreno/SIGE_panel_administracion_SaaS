@@ -21,6 +21,7 @@ export const mainNavItems = [
 
 export const tenantSections = [
   { id: 'overview', labelKey: 'overview' },
+  { id: 'monitoring', labelKey: 'monitoring.title' },
   { id: 'domains', labelKey: 'domains.title' },
   { id: 'versioning', labelKey: 'versioning.title' },
   { id: 'modules', labelKey: 'modules' },
