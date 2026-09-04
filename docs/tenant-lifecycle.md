@@ -91,8 +91,8 @@ From tenant detail:
 ## 5. Client access
 
 - ERP admin: `https://erp.<slug>.findspo.com/admin`
-- Web public: `https://www.<slug>.findspo.com`
-- CMS admin: `https://www.<slug>.findspo.com/admin`
+- Web public: `https://www.<slug>.findspo.com` (`/admin` is blocked on www)
+- CMS admin: `https://cms.<domain>/admin` (custom `cms.*` host; never on www)
 - Custom (after verify): `https://www.cliente.com`
 
 ## Env del panel

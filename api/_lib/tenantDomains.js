@@ -108,6 +108,23 @@ export function httpsUrlForHost(hostname) {
   return host ? `https://${host}` : ''
 }
 
+/**
+ * CMS admin is served on cms.<domain>, never on public www.<domain>.
+ * www.acme.findspo.com → cms.acme.findspo.com
+ */
+export function cmsAdminHostFromWebHost(webHost) {
+  const host = normalizeHostname(webHost)
+  if (!host) return ''
+  if (host.startsWith('cms.')) return host
+  if (host.startsWith('www.')) return `cms.${host.slice(4)}`
+  return `cms.${host}`
+}
+
+export function cmsAdminUrlFromWebHost(webHost) {
+  const host = cmsAdminHostFromWebHost(webHost)
+  return host ? `https://${host}/admin` : ''
+}
+
 export function ionosRecordNameForHost(hostname, zoneName) {
   const host = normalizeHostname(hostname)
   const zone = normalizeHostname(zoneName || getSaasBaseDomain())

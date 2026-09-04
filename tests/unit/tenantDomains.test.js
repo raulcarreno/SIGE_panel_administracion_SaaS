@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import {
   buildManualDnsInstructions,
   buildTenantDomainManifest,
+  cmsAdminHostFromWebHost,
+  cmsAdminUrlFromWebHost,
   deriveSaasHosts,
   evaluateDnsVerification,
   ionosRecordNameForHost,
@@ -16,6 +18,12 @@ describe('tenantDomains', () => {
     assert.equal(hosts.erpHost, 'erp.acme-co.findspo.com')
     assert.equal(hosts.webHost, 'www.acme-co.findspo.com')
     assert.equal(hosts.saasBaseDomain, 'findspo.com')
+  })
+
+  it('maps www web host to cms admin host', () => {
+    assert.equal(cmsAdminHostFromWebHost('www.acme.findspo.com'), 'cms.acme.findspo.com')
+    assert.equal(cmsAdminUrlFromWebHost('www.acme.findspo.com'), 'https://cms.acme.findspo.com/admin')
+    assert.equal(cmsAdminHostFromWebHost('cms.acme.info'), 'cms.acme.info')
   })
 
   it('validates hostnames', () => {

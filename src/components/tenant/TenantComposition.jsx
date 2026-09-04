@@ -10,6 +10,36 @@ function publicTenantUrl(host, fallbackUrl) {
   return fallback
 }
 
+/** www.<domain> → https://cms.<domain>/admin (CMS admin is never on public www). */
+function cmsAdminUrl(webHost, webUrl) {
+  const host = String(webHost || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .split('/')[0]
+  if (host) {
+    if (host.startsWith('cms.')) return `https://${host}/admin`
+    if (host.startsWith('www.')) return `https://cms.${host.slice(4)}/admin`
+    return `https://cms.${host}/admin`
+  }
+  const base = String(webUrl || '').replace(/\/$/, '')
+  if (!base) return ''
+  try {
+    const url = new URL(base)
+    if (url.hostname.startsWith('www.')) {
+      url.hostname = `cms.${url.hostname.slice(4)}`
+    } else if (!url.hostname.startsWith('cms.')) {
+      url.hostname = `cms.${url.hostname}`
+    }
+    url.pathname = '/admin'
+    url.search = ''
+    url.hash = ''
+    return url.toString().replace(/\/$/, '')
+  } catch {
+    return `${base}/admin`
+  }
+}
+
 /**
  * Canonical tenant composition: ERP (billing CRM) + Web CMS.
  * One tenant registry row = both pods sharing platform config.
@@ -80,7 +110,13 @@ export default function TenantComposition({ tenant, compact = false }) {
                 <Button variant="secondary" as="a" href={webUrl} target="_blank" rel="noreferrer">
                   {t('openWebSite')}
                 </Button>
-                <Button variant="secondary" as="a" href={`${webUrl}/admin`} target="_blank" rel="noreferrer">
+                <Button
+                  variant="secondary"
+                  as="a"
+                  href={cmsAdminUrl(tenant?.webHost, webUrl)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   {t('adminWebCms')}
                 </Button>
               </div>

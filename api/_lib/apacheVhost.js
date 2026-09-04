@@ -5,7 +5,17 @@ function sanitizeLogName(hostname) {
     .replace(/^-+|-+$/g, '')
 }
 
-export function buildApacheVhost({ serverName, port, aliases = [] }) {
+/**
+ * @param {{
+ *   serverName: string,
+ *   port: number,
+ *   aliases?: string[],
+ *   blockWwwAdmin?: boolean,
+ * }} options
+ * When blockWwwAdmin is true, /admin and /api/admin are forbidden on Host www.*.
+ * Use a cms.* (or non-www) alias on the same backend for CMS admin access.
+ */
+export function buildApacheVhost({ serverName, port, aliases = [], blockWwwAdmin = false }) {
   const host = String(serverName || '').trim().toLowerCase()
   const listenPort = Number(port)
   if (!host) {
@@ -22,12 +32,18 @@ export function buildApacheVhost({ serverName, port, aliases = [] }) {
   const uniqueAliases = [...new Set(aliases.map((item) => String(item).trim().toLowerCase()).filter(Boolean))]
     .filter((alias) => alias !== host)
   const aliasLine = uniqueAliases.length ? `    ServerAlias ${uniqueAliases.join(' ')}\n` : ''
+  const adminBlock = blockWwwAdmin
+    ? `    RewriteEngine On
+    RewriteCond %{HTTP_HOST} ^www\\. [NC]
+    RewriteRule ^/(admin|api/admin)(/.*)?$ - [F,L]
+`
+    : ''
   const log = sanitizeLogName(host)
 
   return `<VirtualHost *:80>
     ServerName ${host}
 ${aliasLine}    ProxyPreserveHost On
-    ProxyPass / http://127.0.0.1:${listenPort}/
+${adminBlock}    ProxyPass / http://127.0.0.1:${listenPort}/
     ProxyPassReverse / http://127.0.0.1:${listenPort}/
     RequestHeader set X-Forwarded-Proto "expr=%{REQUEST_SCHEME}"
     Timeout 300

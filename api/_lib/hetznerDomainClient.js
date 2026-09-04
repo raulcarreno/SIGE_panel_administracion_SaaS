@@ -119,14 +119,14 @@ async function reloadApache() {
   ])
 }
 
-async function writeVhost(hostname, port, aliases = []) {
+async function writeVhost(hostname, port, aliases = [], { blockWwwAdmin = false } = {}) {
   const composeDir = getComposeProjectDir()
   const availableDir = join(composeDir, 'apache', 'sites-available')
   const enabledDir = join(composeDir, 'apache', 'sites-enabled')
   await mkdir(availableDir, { recursive: true })
   await mkdir(enabledDir, { recursive: true })
   const fileName = vhostFileName(hostname)
-  const body = buildApacheVhost({ serverName: hostname, port, aliases })
+  const body = buildApacheVhost({ serverName: hostname, port, aliases, blockWwwAdmin })
   const availablePath = join(availableDir, fileName)
   const enabledPath = join(enabledDir, fileName)
   await writeFile(availablePath, body, 'utf8')
@@ -149,7 +149,8 @@ export async function provisionTenantHosts({ slug, erpHost, webHost, customHosts
   const webAliases = customHosts.filter((item) => item.kind !== 'erp').map((item) => item.hostname)
 
   const erpFile = await writeVhost(erpHost, erpPort, erpAliases)
-  const webFile = await writeVhost(webHost, webPort, webAliases)
+  // Public www must not expose /admin; CMS admin uses cms.* (or other non-www) aliases.
+  const webFile = await writeVhost(webHost, webPort, webAliases, { blockWwwAdmin: true })
   await reloadApache()
 
   return {

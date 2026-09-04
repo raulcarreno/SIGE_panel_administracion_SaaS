@@ -38,7 +38,20 @@ describe('apacheVhost', () => {
     assert.match(conf, /ServerName www\.reformasbcn\.findspo\.com/)
     assert.match(conf, /ServerAlias www\.reformasbcn\.com/)
     assert.match(conf, /ProxyPass \/ http:\/\/127\.0\.0\.1:8083\//)
+    assert.doesNotMatch(conf, /RewriteRule \^\/\(admin/)
     assert.equal(vhostFileName('erp.acme.findspo.com'), '100-erp.acme.findspo.com.conf')
+  })
+
+  it('blocks /admin on www hosts when blockWwwAdmin is set', () => {
+    const conf = buildApacheVhost({
+      serverName: 'www.acme.findspo.com',
+      port: 8083,
+      aliases: ['cms.acme.info', 'www.acme.info'],
+      blockWwwAdmin: true,
+    })
+    assert.match(conf, /RewriteCond %\{HTTP_HOST\} \^www\\\. \[NC\]/)
+    assert.match(conf, /RewriteRule \^\/\(admin\|api\/admin\)\(\/\.\*\)\?\$ - \[F,L\]/)
+    assert.match(conf, /ServerAlias cms\.acme\.info www\.acme\.info/)
   })
 })
 
