@@ -3,6 +3,8 @@
  * Requires GITHUB_TOKEN with repo contents + pull access.
  */
 
+import { tenantErpDeploymentName, tenantWebDeploymentName } from './tenantDomains.js'
+
 function getToken() {
   return process.env.GITHUB_TOKEN?.trim() || ''
 }
@@ -155,13 +157,5 @@ export function imageNameFor(kind, slug, shortSha) {
 }
 
 export function deploymentNameFor(kind, slug) {
-  const normalized = String(slug || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/^-+|-+$/g, '')
-  if (!normalized || process.env.PLATFORM_TENANT_ISOLATED === '0') {
-    return kind === 'web' ? 'sige-web' : 'sige-erp'
-  }
-  return kind === 'web' ? `sige-web-${normalized}` : `sige-erp-${normalized}`
+  return kind === 'web' ? tenantWebDeploymentName(slug) : tenantErpDeploymentName(slug)
 }

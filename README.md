@@ -44,3 +44,9 @@ Panel serves built SPA + API on port 3001.
 - [Tenant lifecycle](docs/tenant-lifecycle.md)
 - [Panel API OpenAPI](docs/panel-api.openapi.yaml)
 - [Control API reference](docs/control-api.openapi.yaml)
+
+## Produccion
+
+Runtime: Hetzner `sige-prod` (`RUNTIME_TARGET=hetzner`). Rollback GKE: `RUNTIME_TARGET=gke`.
+
+Ver `SIGE_monolito/docs/hetzner-production.md`.

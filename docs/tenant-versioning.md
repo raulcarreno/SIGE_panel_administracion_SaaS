@@ -64,11 +64,12 @@ GITHUB_TOKEN=
 GITHUB_ERP_REPO=raulcarreno/SIGE_monolito
 GITHUB_WEB_REPO=raulcarreno/SIGE_monolito_web
 GCP_PROJECT_ID=findspo-core
-GKE_CLUSTER=kbnt-prd-1
-GKE_REGION=europe-southwest1
-GKE_NAMESPACE=sige-saas-prod
 ARTIFACT_REGISTRY=europe-southwest1-docker.pkg.dev/findspo-core/fraian-saas
+RUNTIME_TARGET=hetzner
+INGRESS_IP=<sige-prod-ipv4>
+COMPOSE_PROJECT_DIR=/var/www/sige
 SIGE_WORKSPACE_ROOT=/path/to/SIGE_workspace   # para build desde el worker
+
 ```
 
 ## CLI

@@ -107,7 +107,7 @@ En el tenant → **Versionado**:
 
 1. Actualizar estado (debe verse rama `sige-saas`)
 2. Promover main → ERP (dry/real)
-3. Desplegar rama ERP (requiere `gcloud`/`kubectl` desde el entorno del panel o CLI)
+3. Desplegar rama ERP (Cloud Build + `docker compose` en sige-prod, o `kubectl` si `RUNTIME_TARGET=gke`)
 
 CLI equivalente:
 

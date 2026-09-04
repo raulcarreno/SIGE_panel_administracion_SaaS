@@ -1,7 +1,6 @@
 import dns from 'node:dns/promises'
 import {
   buildManualDnsInstructions,
-  buildTenantDomainManifest,
   deriveSaasHosts,
   evaluateDnsVerification,
   getSaasBaseDomain,
@@ -9,7 +8,7 @@ import {
   isValidHostname,
   normalizeHostname,
 } from './tenantDomains.js'
-import * as gke from './gkeDomainClient.js'
+import * as runtimeDomains from './runtimeDomainClient.js'
 import {
   addCustomDomain,
   deleteCustomDomain,
@@ -71,7 +70,7 @@ export async function getDomainsStatus(tenantId) {
   let ingressIp = process.env.INGRESS_IP?.trim() || null
   if (!ingressIp) {
     try {
-      ingressIp = await gke.resolveIngressIp()
+      ingressIp = await runtimeDomains.resolveIngressIp()
     } catch {
       ingressIp = null
     }
@@ -107,21 +106,16 @@ export async function getDomainsStatus(tenantId) {
 }
 
 async function applyIngressAndCert(tenant, customDomains) {
-  const config = gke.getGkeConfig()
   const provisionedCustom = customDomains
     .filter((d) => d.status === 'verified' || d.status === 'provisioned')
     .map((d) => ({ hostname: d.hostname, kind: d.kind }))
 
-  const manifest = buildTenantDomainManifest({
+  return runtimeDomains.provisionTenantHosts({
     slug: tenant.slug,
-    namespace: config.namespace,
     erpHost: tenant.erpHost,
     webHost: tenant.webHost,
     customHosts: provisionedCustom,
   })
-
-  const applyResult = await gke.applyDomainManifest(manifest.yaml)
-  return { manifest, applyResult }
 }
 
 export async function provisionTenantDomains(tenantId, { actorEmail }) {
@@ -154,7 +148,7 @@ export async function provisionTenantDomains(tenantId, { actorEmail }) {
   })
 
   try {
-    const ingressIp = await gke.resolveIngressIp()
+    const ingressIp = await runtimeDomains.resolveIngressIp()
     const customDomains = await listCustomDomains(tenantId)
     const { manifest, applyResult } = await applyIngressAndCert(
       { ...tenant, erpHost, webHost },
@@ -317,7 +311,7 @@ export async function verifyAndProvisionCustomDomain(tenantId, domainId, { actor
   try {
     let ingressIp = process.env.INGRESS_IP?.trim() || null
     try {
-      ingressIp = ingressIp || (await gke.resolveIngressIp())
+      ingressIp = ingressIp || (await runtimeDomains.resolveIngressIp())
     } catch {
       // A-record verification optional if IP unknown
     }

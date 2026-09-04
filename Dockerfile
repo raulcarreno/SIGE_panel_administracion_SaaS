@@ -11,6 +11,7 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3001
+RUN apk add --no-cache docker-cli docker-cli-compose
 COPY package.json ./
 RUN npm install --omit=dev
 COPY --from=build /app/dist ./dist

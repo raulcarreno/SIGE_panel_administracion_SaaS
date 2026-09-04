@@ -6,7 +6,6 @@ import {
 } from './tenantDomains.js'
 import {
   clampTailLines,
-  defaultKubeClient,
   filterTenantEvents,
   getRuntimeNamespace,
   groupPodsByComponent,
@@ -17,6 +16,7 @@ import {
   summarizeEvent,
   summarizePod,
 } from './kubeApiClient.js'
+import { defaultRuntimeClient } from './runtimeClient.js'
 
 const WEB_HEALTH_TIMEOUT_MS = 8_000
 
@@ -147,7 +147,7 @@ function sortEventsNewestFirst(events) {
   })
 }
 
-export async function fetchClusterSnapshot(slug, kube = defaultKubeClient) {
+export async function fetchClusterSnapshot(slug, kube = defaultRuntimeClient()) {
   const namespace = kube.getRuntimeNamespace?.() || getRuntimeNamespace()
   const names = namesForSlug(slug)
 
@@ -204,7 +204,7 @@ export async function fetchClusterSnapshot(slug, kube = defaultKubeClient) {
 export async function getTenantRuntime(tenantId, deps = {}) {
   const loadTenant = deps.loadTenant || loadTenantContext
   const getCredentials = deps.getCredentials || resolveTenantCredentials
-  const kube = deps.kube || defaultKubeClient
+  const kube = deps.kube || defaultRuntimeClient()
   const getErpStatus = deps.getErpStatus || controlApi.getStatus
   const getWebReady = deps.getWebReady || fetchWebReady
 
@@ -246,7 +246,7 @@ export async function getTenantRuntime(tenantId, deps = {}) {
 
 export async function getTenantRuntimeLogs(tenantId, query = {}, deps = {}) {
   const loadTenant = deps.loadTenant || loadTenantContext
-  const kube = deps.kube || defaultKubeClient
+  const kube = deps.kube || defaultRuntimeClient()
   const component = parseComponent(query.component)
   const tailLines = clampTailLines(query.tailLines)
   const previous = parsePreviousFlag(query.previous)

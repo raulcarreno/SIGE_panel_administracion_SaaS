@@ -22,7 +22,7 @@ Read before any code change:
 - `node scripts/tenant-deploy.mjs promote|deploy`
 - Superadmin versioning API: `POST /api/superadmin/tenants/:id/versioning/promote`, `POST .../versioning/deploy`
 - Docker image build+push to Artifact Registry or any remote registry
-- `kubectl apply`, GKE rollouts, or production cluster manifest changes
+- `kubectl apply`, GKE rollouts, Docker Compose production rollouts on `sige-prod`, or production cluster/VM manifest changes
 - Control API mutations on **production** tenant pods via `controlApiClient.js` (migrations run, maintenance, config/settings PUT)
 
 **Allowed locally (no deploy):** edit code/specs, `npm run lint && npm test && npm run build`, local `docker compose build|up`, read-only tenant status/sync, dry-runs.

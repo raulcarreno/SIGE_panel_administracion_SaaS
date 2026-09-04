@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import * as github from './githubClient.js'
 import * as controlApi from './controlApiClient.js'
 import { assertTenantBranchPaths } from './tenantPathGuard.js'
+import { rollOutService } from './runtimeDeployClient.js'
 import {
   createDeployJob,
   getTenantVersioningRow,
@@ -218,11 +219,7 @@ async function deployOne(kind, tenant) {
   const pathGuard = await assertTenantBranchPaths(kind, branch)
   const head = await github.getBranchHead(kind, branch)
   const image = github.imageNameFor(kind, tenant.slug, head.shortSha)
-  const deployment = github.deploymentNameFor(kind, tenant.slug)
-  const namespace = process.env.GKE_NAMESPACE?.trim() || 'sige-saas-prod'
   const project = process.env.GCP_PROJECT_ID?.trim() || 'findspo-core'
-  const region = process.env.GKE_REGION?.trim() || 'europe-southwest1'
-  const cluster = process.env.GKE_CLUSTER?.trim() || 'kbnt-prd-1'
   const appVersion = process.env.DEFAULT_APP_VERSION?.trim() || '0.2.0'
   const repoDirHint = kind === 'web' ? 'SIGE_monolito_web' : 'SIGE_monolito'
   const configPath =
@@ -234,7 +231,7 @@ async function deployOne(kind, tenant) {
   const workspaceRoot = process.env.SIGE_WORKSPACE_ROOT?.trim()
   const sourceDir = workspaceRoot ? `${workspaceRoot}/${repoDirHint}` : null
 
-  if (sourceDir && process.env.DEPLOY_MODE !== 'kubectl-only') {
+  if (sourceDir && process.env.DEPLOY_MODE !== 'kubectl-only' && process.env.DEPLOY_MODE !== 'compose-only') {
     try {
       await runCommand('gcloud', [
         'builds',
@@ -245,48 +242,19 @@ async function deployOne(kind, tenant) {
         `--project=${project}`,
       ])
     } catch (error) {
-      // Fall through to kubectl set image if build tools unavailable in-panel
       if (process.env.DEPLOY_REQUIRE_BUILD === '1') throw error
     }
   }
 
-  await runCommand('gcloud', [
-    'container',
-    'clusters',
-    'get-credentials',
-    cluster,
-    `--region=${region}`,
-    `--project=${project}`,
-  ])
-
-  await runCommand('kubectl', [
-    'set',
-    'image',
-    `deployment/${deployment}`,
-    `${kind === 'web' ? 'web' : 'erp'}=${image}`,
-    `-n`,
-    namespace,
-  ])
-
-  await runCommand('kubectl', [
-    'set',
-    'env',
-    `deployment/${deployment}`,
-    `-n`,
-    namespace,
-    `APP_VERSION=${appVersion}`,
-    `GIT_SHA=${head.sha}`,
-    `GIT_BRANCH=${branch}`,
-  ])
-
-  await runCommand('kubectl', [
-    'rollout',
-    'status',
-    `deployment/${deployment}`,
-    `-n`,
-    namespace,
-    `--timeout=300s`,
-  ])
+  const rollout = await rollOutService({
+    kind,
+    slug: tenant.slug,
+    image,
+    appVersion,
+    gitSha: head.sha,
+    gitBranch: branch,
+  })
+  const deployment = rollout.service
 
   const patch =
     kind === 'web'

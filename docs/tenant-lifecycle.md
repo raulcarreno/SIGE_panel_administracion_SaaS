@@ -24,8 +24,9 @@ Both pods share the platform config database (`CONFIG_DATABASE_URL` / `sige_conf
 
 ```bash
 cd SIGE_monolito
-export POSTGRES_PASSWORD=...   # same as cluster postgres
-./deploy/gcp-gke/provision-tenant-stack.sh <slug>
+export POSTGRES_PASSWORD=...   # same as platform postgres
+./deploy/hetzner/provision-tenant-stack.sh <slug>
+# GKE rollback: ./deploy/gcp-gke/provision-tenant-stack.sh <slug>
 ```
 
 This creates DBs `sige_<slug>_{erp,config,content}` and Deployments/Services `sige-erp-<slug>` / `sige-web-<slug>`.  
@@ -39,7 +40,7 @@ See `SIGE_monolito` / `SIGE_monolito_web` deploy docs and `docs/cutover-gke-plat
 2. Fill identity (`slug`, display name, Control token). Hosts preview as:
    - ERP: `erp.<slug>.findspo.com`
    - Web: `www.<slug>.findspo.com`
-3. Optionally enable **Aplicar Ingress + certificado** (GKE).
+3. Optionally enable **Aplicar Ingress + certificado** (Apache vhosts on Hetzner; GKE Ingress on rollback).
 4. Optionally add a custom web hostname (CNAME later).
 5. Save — registry URLs are derived from SaaS hosts.
 
@@ -47,9 +48,10 @@ See `SIGE_monolito` / `SIGE_monolito_web` deploy docs and `docs/cutover-gke-plat
 
 `POST /api/superadmin/tenants/:id/domains/provision` (or checkbox on create):
 
-1. Applies per-tenant Ingress `sige-tenant-<slug>` + ManagedCertificate `sige-cert-<slug>`.
-2. Sets `baseUrl` / `webBaseUrl` to the HTTPS SaaS URLs.
-3. Returns **manual DNS instructions** (A records for IONOS). The panel does **not** write to IONOS.
+1. On Hetzner (`RUNTIME_TARGET=hetzner`): writes Apache vhosts for the SaaS hosts and reloads Apache.
+2. On GKE rollback: applies per-tenant Ingress `sige-tenant-<slug>` + ManagedCertificate `sige-cert-<slug>`.
+3. Sets `baseUrl` / `webBaseUrl` to the HTTPS SaaS URLs.
+4. Returns **manual DNS instructions** (A records for IONOS). The panel does **not** write to IONOS.
 
 ### DNS manual (IONOS)
 
@@ -93,13 +95,15 @@ From tenant detail:
 - CMS admin: `https://www.<slug>.findspo.com/admin`
 - Custom (after verify): `https://www.cliente.com`
 
-## Env (panel)
+## Env del panel
 
 | Variable | Purpose |
 |----------|---------|
+| `RUNTIME_TARGET` | `hetzner` on sige-prod; `gke` for rollback |
 | `DNS_ZONE_NAME` | Zone label for instructions (default `findspo.com`) |
 | `SAAS_BASE_DOMAIN` | Host suffix (default `findspo.com`) |
-| `INGRESS_IP` | Optional override; else read from platform Ingress |
+| `INGRESS_IP` | Public IPv4 (Hetzner sige-prod, or GKE Ingress on rollback) |
+| `COMPOSE_PROJECT_DIR` | Compose project on the VM (default `/var/www/sige`) |
 | `PLATFORM_ERP_SERVICE_TEMPLATE` / `PLATFORM_WEB_SERVICE_TEMPLATE` | Isolated backends (default `sige-erp-{slug}` / `sige-web-{slug}`) |
 | `PLATFORM_TENANT_ISOLATED=0` + `PLATFORM_ERP_SERVICE` / `PLATFORM_WEB_SERVICE` | Legacy shared demo backends |
 
