@@ -36,6 +36,12 @@ export function buildApacheVhost({ serverName, port, aliases = [], blockWwwAdmin
     ? `    RewriteEngine On
     RewriteCond %{HTTP_HOST} ^www\\. [NC]
     RewriteRule ^/(admin|api/admin)(/.*)?$ - [F,L]
+    RewriteCond %{HTTP_HOST} ^(cms|crm)\\. [NC]
+    RewriteCond %{REQUEST_URI} !^/admin
+    RewriteCond %{REQUEST_URI} !^/api/
+    RewriteCond %{REQUEST_URI} !^/assets/
+    RewriteCond %{REQUEST_URI} !^/images/
+    RewriteRule ^ /admin [R=302,L]
 `
     : ''
   const log = sanitizeLogName(host)

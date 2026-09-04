@@ -51,6 +51,8 @@ describe('apacheVhost', () => {
     })
     assert.match(conf, /RewriteCond %\{HTTP_HOST\} \^www\\\. \[NC\]/)
     assert.match(conf, /RewriteRule \^\/\(admin\|api\/admin\)\(\/\.\*\)\?\$ - \[F,L\]/)
+    assert.match(conf, /RewriteCond %\{HTTP_HOST\} \^\(cms\|crm\)\\\. \[NC\]/)
+    assert.match(conf, /RewriteRule \^ \/admin \[R=302,L\]/)
     assert.match(conf, /ServerAlias cms\.acme\.info www\.acme\.info/)
   })
 })
