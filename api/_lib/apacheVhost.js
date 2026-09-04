@@ -12,10 +12,18 @@ function sanitizeLogName(hostname) {
  *   aliases?: string[],
  *   blockWwwAdmin?: boolean,
  * }} options
- * When blockWwwAdmin is true, /admin and /api/admin are forbidden on Host www.*.
- * Use a cms.* (or non-www) alias on the same backend for CMS admin access.
+ * When blockWwwAdmin is true:
+ * - browser /admin on www.* redirects to https://crm.<rest>/admin (friendly UX)
+ * - /api/admin on www.* stays forbidden
+ * - cms.* / crm.* public paths redirect to /admin
  */
-export function buildApacheVhost({ serverName, port, aliases = [], blockWwwAdmin = false }) {
+export function buildApacheVhost({
+  serverName,
+  port,
+  aliases = [],
+  blockWwwAdmin = false,
+  cmsAdminRedirectBase = '',
+}) {
   const host = String(serverName || '').trim().toLowerCase()
   const listenPort = Number(port)
   if (!host) {
@@ -32,10 +40,18 @@ export function buildApacheVhost({ serverName, port, aliases = [], blockWwwAdmin
   const uniqueAliases = [...new Set(aliases.map((item) => String(item).trim().toLowerCase()).filter(Boolean))]
     .filter((alias) => alias !== host)
   const aliasLine = uniqueAliases.length ? `    ServerAlias ${uniqueAliases.join(' ')}\n` : ''
+
+  let cmsRedirectTarget = String(cmsAdminRedirectBase || '').trim().replace(/\/$/, '')
+  if (!cmsRedirectTarget && host.startsWith('www.')) {
+    cmsRedirectTarget = `https://crm.${host.slice(4)}`
+  }
+
   const adminBlock = blockWwwAdmin
     ? `    RewriteEngine On
     RewriteCond %{HTTP_HOST} ^www\\. [NC]
-    RewriteRule ^/(admin|api/admin)(/.*)?$ - [F,L]
+    RewriteRule ^/admin(/.*)?$ ${cmsRedirectTarget || 'https://crm.example.com'}/admin$1 [R=302,L]
+    RewriteCond %{HTTP_HOST} ^www\\. [NC]
+    RewriteRule ^/api/admin(/.*)?$ - [F,L]
     RewriteCond %{HTTP_HOST} ^(cms|crm)\\. [NC]
     RewriteCond %{REQUEST_URI} !^/admin
     RewriteCond %{REQUEST_URI} !^/api/
